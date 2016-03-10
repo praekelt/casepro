@@ -37,7 +37,7 @@ def update_message_labels(sender, instance, created, **kwargs):
     # remove this contact from any labels not in the new set
     remove_from = [l for l in cur_labels_by_uuid.values() if l.uuid not in six.viewkeys(new_labels_by_uuid)]
     if remove_from:
-        instance.labels.remove(*remove_from)
+        instance.remove_labels(*remove_from)
 
     # add this message to any labels not in the current set
     add_to_by_uuid = {uuid: name for uuid, name in six.iteritems(new_labels_by_uuid)
@@ -45,7 +45,6 @@ def update_message_labels(sender, instance, created, **kwargs):
     if add_to_by_uuid:
         org_labels = {l.uuid: l for l in org.labels.all()}
 
-        # create any labels that don't exist
         add_to_labels = []
         for uuid, name in six.iteritems(add_to_by_uuid):
             existing = org_labels.get(uuid)
@@ -55,6 +54,6 @@ def update_message_labels(sender, instance, created, **kwargs):
 
             add_to_labels.append(existing)
 
-        instance.labels.add(*add_to_labels)
+        instance.add_labels(*add_to_labels)
 
     delattr(instance, SAVE_LABELS_ATTR)

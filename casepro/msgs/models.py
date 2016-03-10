@@ -231,12 +231,14 @@ class Message(models.Model):
 
         return matches
 
-    def add_label(self, label):
-        if not Labelling.objects.filter(message=self, label=label).exists():
-            Labelling.objects.create(message=self, label=label, message_created_on=self.created_on)
+    def add_labels(self, *labels):
+        cur_labellings = Labelling.objects.filter(message=self, label__in=labels).values_list('message', 'label')
+        non_existing = [label for label in labels if (self.pk, label.pk) not in cur_labellings]
+        new_labellings = [Labelling(message=self, label=l, message_created_on=self.created_on) for l in non_existing]
+        Labelling.objects.bulk_create(new_labellings)
 
-    def remove_label(self, label):
-        Labelling.objects.filter(message=self, label=label).delete()
+    def remove_labels(self, *labels):
+        Labelling.objects.filter(message=self, label__in=labels).delete()
 
     def get_history(self):
         """
@@ -294,7 +296,7 @@ class Message(models.Model):
         messages = list(messages)
         if messages:
             for msg in messages:
-                msg.add_label(label)
+                msg.add_labels(label)
 
             get_backend().label_messages(org, messages, label)
 
@@ -305,7 +307,7 @@ class Message(models.Model):
         messages = list(messages)
         if messages:
             for msg in messages:
-                msg.remove_label(label)
+                msg.remove_labels(label)
 
             get_backend().unlabel_messages(org, messages, label)
 

@@ -73,7 +73,7 @@ def handle_messages(org, since, until):
                 # TODO check for pointless re-labelling
 
                 for msg in matched_msgs:
-                    msg.labels.add(label)
+                    msg.add_labels(label)
 
                 backend.label_messages(org, matched_msgs, label)
 

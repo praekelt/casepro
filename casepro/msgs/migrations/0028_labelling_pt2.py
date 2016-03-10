@@ -17,7 +17,7 @@ def populate_message_labellings(apps, schema_editor):
             for message in messages:
                 Labelling.objects.create(message=message, label=label, message_created_on=message.created_on)
 
-            print " > Migrated label '%s' (%d messages)" % (label.name, len(messages))
+            print " > Migrated label '%s' [#%d] (%d messages)" % (label.name, label.pk, len(messages))
 
 
 class Migration(migrations.Migration):
