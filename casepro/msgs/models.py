@@ -128,8 +128,8 @@ class Message(models.Model):
 
     text = models.TextField(max_length=640, verbose_name=_("Text"))
 
-    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this message"), related_name='messages')
-
+    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this message"),
+                                    related_name='messages', through='Labelling')
     is_flagged = models.BooleanField(default=False)
 
     is_archived = models.BooleanField(default=False)
@@ -231,6 +231,13 @@ class Message(models.Model):
 
         return matches
 
+    def add_label(self, label):
+        if not Labelling.objects.filter(message=self, label=label).exists():
+            Labelling.objects.create(message=self, label=label, message_created_on=self.created_on)
+
+    def remove_label(self, label):
+        Labelling.objects.filter(message=self, label=label).delete()
+
     def get_history(self):
         """
         Gets the actions for this message in reverse chronological order
@@ -287,7 +294,7 @@ class Message(models.Model):
         messages = list(messages)
         if messages:
             for msg in messages:
-                msg.labels.add(label)
+                msg.add_label(label)
 
             get_backend().label_messages(org, messages, label)
 
@@ -298,7 +305,7 @@ class Message(models.Model):
         messages = list(messages)
         if messages:
             for msg in messages:
-                msg.labels.remove(label)
+                msg.remove_label(label)
 
             get_backend().unlabel_messages(org, messages, label)
 
@@ -346,6 +353,19 @@ class Message(models.Model):
 
     def __str__(self):
         return self.text if self.text else self.pk
+
+
+class Labelling(models.Model):
+    """
+    The message and label many-to-many relationship is defined through this model which adds an extra field to hold the
+    message created_on datetime. This allows us to make faster queries based on combinations of labels and the message
+    creation time because we don't have to fetch all messages with those labels.
+    """
+    message = models.ForeignKey(Message)
+
+    label = models.ForeignKey(Label)
+
+    message_created_on = models.DateTimeField()
 
 
 class MessageAction(models.Model):
