@@ -8,7 +8,6 @@ services = angular.module('cases.services', ['cases.modals']);
 #=====================================================================
 # Incoming message service
 #=====================================================================
-
 services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class MessageService
 
@@ -133,7 +132,6 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
 #=====================================================================
 # Frequently Asked Question Replies service
 #=====================================================================
-
 services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class FAQService
 
@@ -142,7 +140,7 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
     #----------------------------------------------------------------------------
 
     fetchFaqs: (search) ->
-      console.log search
+      # Dummy results; to be removed when API ready
       results = [{
           "id": 1,
           "question": "Can I get infected from touching an HIV+ person's blood ?",
@@ -175,7 +173,7 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
           "labels": [
               {'id': 15, 'name': "Pregnancy"}
           ]
-        }
+        },
         {
           "id": 2,
           "question": "example question 5",
@@ -184,7 +182,7 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
               {'id': 102, 'name': "TB"},
               {'id': 103, 'name': "Pregnancy"},
           ]
-        }
+        },
         {
           "id": 2,
           "question": "example question 6",
@@ -193,14 +191,52 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
               {'id': 102, 'name': "TB"},
               {'id': 103, 'name': "Pregnancy"},
           ]
-        }]
+        },
+        {
+          "id": 11,
+          "question": "Will my child get Ebola if I'm HIV positive ?",
+          "answer": "No , your child will not get Ebola , unless he/she is exposed to the virus",
+          "labels": [
+              {'id': 15, 'name': "HIV"}
+
+          ]
+        },
+        {
+          "id": 13,
+          "question": "Bablo selesa ikomu saniolo Ebola bu HIV positive lesa?",
+          "answer": "Manase roja bokolo ya virus sleyona mkonena wer wer vetar",
+          "labels": [
+              {'id': 15, 'name': "HIV"}
+
+          ]
+        },
+        {
+          "id": 6,
+          "question": "Nkri nkri boro wayelsa ?",
+          "answer": "Machukana e natenda www.amipregnat.com  vaeslav",
+          "labels": [
+              {'id': 13, 'name': "Pregnancy"},
+          ]
+          }
+      ]
       if search.label
         if search.label.name == 'TB'
           results = [results[2]]
         else if search.label.name == 'HIV'
-          results = [results[0],results[1]]
+          if search.text
+            if search.text.toLowerCase() == "ebola"
+              if search.language == 3
+                results = [results[7]]
+              else
+                results = [results[6]]
+
+            else
+              results = [results[0],results[1]]
         else
-          results = [results[3],results[4],results[5]]
+          if search.language == 3
+            results =[results[8]]
+          else
+            results = [results[3],results[4],results[5]]
       else
         results
 
@@ -220,9 +256,36 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
 ])
 
 #=====================================================================
+# Language service
+#=====================================================================
+services.factory('LanguageService', ['$rootScope', '$http', ($rootScope, $http, $httpParamSerializer) ->
+  new class LanguageService
+      getLanguages : () ->
+          # COMMENT OUT WHEN API READY
+          # return $http.get('/lang).then((response) -> response.data.results)
+          dummy_languages = [{
+            id:1,
+            name:'English Nigeria',
+            code:'eng_ng'
+          },
+          {
+            id:2,
+            name:'English South Africa',
+            code:'eng_za'
+          },
+          {
+            id:3,
+            name:'French Nigeria',
+            code:'fr_ng'
+          }]
+          return dummy_languages
+
+
+  ])
+
+#=====================================================================
 # Incoming message service
 #=====================================================================
-
 services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class OutgoingService
 
@@ -276,7 +339,6 @@ services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerialize
 #=====================================================================
 # Case service
 #=====================================================================
-
 services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($http, $httpParamSerializer, $window) ->
   new class CaseService
 
@@ -414,7 +476,6 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
 #=====================================================================
 # Label service
 #=====================================================================
-
 services.factory('LabelService', ['$http', ($http) ->
   new class LabelService
 
