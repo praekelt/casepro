@@ -309,6 +309,10 @@ PERMISSIONS = {
 
     'msgs.label': ('create', 'update', 'list'),
 
+    'msgs.language': ('create', 'read', 'update', 'delete', 'list'),
+
+    'msgs.faq': ('create', 'read', 'update', 'delete', 'list', 'search'),
+
     'msgs.message': ('action', 'bulk_reply', 'forward', 'label', 'history', 'search', 'unlabelled'),
 
     'msgs.messageexport': ('create', 'read'),
@@ -339,6 +343,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_inbox',
 
         'msgs.label.*',
+        'msgs.language.*',
+        'msgs.faq.*',
         'msgs.message.*',
         'msgs.messageexport.*',
         'msgs.outgoing.*',
@@ -357,6 +363,7 @@ GROUP_PERMISSIONS = {
     "Editors": (  # Partner users: Managers
         'orgs.org_inbox',
 
+        'msgs.faq_search',
         'msgs.message_action',
         'msgs.message_bulk_reply',
         'msgs.message_forward',

@@ -94,6 +94,101 @@ class Label(models.Model):
 
 
 @python_2_unicode_compatible
+class Language(models.Model):
+    """
+    Languages used, defined by the ISO 639-3 language code combined with the location code, e.g. eng_UK
+    """
+    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='languages')
+
+    code = models.CharField(max_length=6)  # e.g. eng_UK
+
+    name = models.CharField(max_length=100, null=True, blank=True)  # e.g. English
+
+    location = models.CharField(max_length=100, null=True, blank=True)  # e.g. United Kingdom
+
+    def as_json(self):
+        return {
+            'id': self.pk,
+            'code': self.code,
+            'name': self.name,
+            'location': self.location
+        }
+
+    def __str__(self):
+        return "%s" % self.code
+
+
+@python_2_unicode_compatible
+class FAQ(models.Model):
+    """
+    Pre-approved questions and answers to be used when replying to a message.
+    """
+    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='faqs')
+
+    question = models.CharField(max_length=140)
+
+    answer = models.CharField(max_length=140)
+
+    language = models.ForeignKey(Language, verbose_name=('Language'), related_name='faqs', default=None)
+
+    parent = models.ForeignKey('self', null=True, blank=True, related_name='translations')
+
+    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this FAQ"), related_name='faqs')
+
+    @classmethod
+    def search(cls, org, user, search):
+        """
+        Search for FAQs
+        """
+        language_id = search.get('language')
+        label_id = search.get('label')
+        question = search.get('question')
+
+        queryset = FAQ.objects.all()
+
+        # Language filtering
+        if language_id:
+            queryset = queryset.filter(language__pk=language_id)
+
+        # Label filtering
+        labels = Label.get_all(org, user)
+
+        if label_id:
+            labels = labels.filter(pk=label_id)
+        else:
+            # if not filtering by a single label, need distinct to avoid duplicates
+            queryset = queryset.distinct()
+
+        queryset = queryset.filter(labels__in=list(labels))
+
+        # Text filtering
+        if question:
+            queryset = queryset.filter(question__icontains=question)
+
+        queryset = queryset.prefetch_related('language', 'labels')
+
+        return queryset.order_by('question')
+
+    def as_json(self):
+        if not self.parent:
+            parent_json = None
+        else:
+            parent_json = self.parent.id
+
+        return {
+            'id': self.pk,
+            'question': self.question,
+            'answer': self.answer,
+            'language': self.language.as_json(),
+            'parent': parent_json,
+            'labels': [l.as_json() for l in self.labels.all()]
+        }
+
+    def __str__(self):
+        return self.question
+
+
+@python_2_unicode_compatible
 class Message(models.Model):
     """
     A incoming message from the backend

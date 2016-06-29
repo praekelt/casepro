@@ -605,6 +605,38 @@ controllers.controller('UserController', ['$scope', '$window', 'UtilsService', '
 
 
 #============================================================================
+# Language view controller
+#============================================================================
+controllers.controller('LanguageController', ['$scope', '$window', 'UtilsService', 'LanguageService', ($scope, $window, UtilsService, LanguageService) ->
+
+  $scope.language = $window.contextData.language
+
+  $scope.onDeleteLanguage = () ->
+    UtilsService.confirmModal("Delete this Language?", 'danger').then(() ->
+      LanguageService.delete($scope.language).then(() ->
+        UtilsService.navigate('/language/')
+      )
+    )
+])
+
+
+#============================================================================
+# Faq view controller
+#============================================================================
+controllers.controller('FaqController', ['$scope', '$window', 'UtilsService', 'FaqService', ($scope, $window, UtilsService, FaqService) ->
+
+  $scope.faq = $window.contextData.faq
+
+  $scope.onDeleteFaq = () ->
+    UtilsService.confirmModal("Warning! If this FAQ has any linked translation FAQs, they will be also be deleted. Delete this FAQ?", 'danger').then(() ->
+      FaqService.delete($scope.faq).then(() ->
+        UtilsService.navigate('/faq/')
+      )
+    )
+])
+
+
+#============================================================================
 # Date range controller
 #============================================================================
 controllers.controller('DateRangeController', ['$scope', ($scope) ->
