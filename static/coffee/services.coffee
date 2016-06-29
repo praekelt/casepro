@@ -131,7 +131,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
 
 
 #=====================================================================
-# Frequently Asked Question Replies service
+# FAQ service
 #=====================================================================
 services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class FAQService
@@ -254,6 +254,13 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
         text: search.text,
         label: if search.label then search.label.id else null
       }
+
+    #----------------------------------------------------------------------------
+    # Delete the given FAQ
+    #----------------------------------------------------------------------------
+    delete: (faq) ->
+      return $http.post('/faq/delete/' + faq.id + '/')
+
 ])
 
 
@@ -527,20 +534,6 @@ services.factory('UserService', ['$http', ($http) ->
     #----------------------------------------------------------------------------
     delete: (user) ->
       return $http.post('/user/delete/' + user.id + '/')
-])
-
-
-#=====================================================================
-# Faq service
-#=====================================================================
-services.factory('FaqService', ['$http', ($http) ->
-  new class FaqService
-
-    #----------------------------------------------------------------------------
-    # Delete the given faq
-    #----------------------------------------------------------------------------
-    delete: (faq) ->
-      return $http.post('/faq/delete/' + faq.id + '/')
 ])
 
 
