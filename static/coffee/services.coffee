@@ -129,6 +129,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       return $http.post('/message/action/' + action + '/', params)
 ])
 
+
 #=====================================================================
 # Frequently Asked Question Replies service
 #=====================================================================
@@ -255,11 +256,13 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
       }
 ])
 
+
 #=====================================================================
 # Language service
 #=====================================================================
 services.factory('LanguageService', ['$rootScope', '$http', ($rootScope, $http, $httpParamSerializer) ->
   new class LanguageService
+
       getLanguages : () ->
           # COMMENT OUT WHEN API READY
           # return $http.get('/lang).then((response) -> response.data.results)
@@ -280,8 +283,14 @@ services.factory('LanguageService', ['$rootScope', '$http', ($rootScope, $http, 
           }]
           return dummy_languages
 
+    #----------------------------------------------------------------------------
+    # Delete the given language
+    #----------------------------------------------------------------------------
+    delete: (language) ->
+      return $http.post('/language/delete/' + language.id + '/')
 
   ])
+
 
 #=====================================================================
 # Incoming message service
@@ -518,20 +527,6 @@ services.factory('UserService', ['$http', ($http) ->
     #----------------------------------------------------------------------------
     delete: (user) ->
       return $http.post('/user/delete/' + user.id + '/')
-])
-
-
-#=====================================================================
-# Language service
-#=====================================================================
-services.factory('LanguageService', ['$http', ($http) ->
-  new class LanguageService
-
-    #----------------------------------------------------------------------------
-    # Delete the given language
-    #----------------------------------------------------------------------------
-    delete: (language) ->
-      return $http.post('/language/delete/' + language.id + '/')
 ])
 
 
