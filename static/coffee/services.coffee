@@ -137,9 +137,8 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
   new class FAQService
 
     #----------------------------------------------------------------------------
-    # Fetches replies to FAQs
+    # Fetch FAQs to use in replies
     #----------------------------------------------------------------------------
-
     fetchFaqs: (search) ->
       params = @_searchFaqsToParams(search)
       return $http.get('/faq/search/?' + $httpParamSerializer(params)).then((response) ->
@@ -167,28 +166,45 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
 #=====================================================================
 # Language service
 #=====================================================================
-services.factory('LanguageService', ['$rootScope', '$http', ($rootScope, $http, $httpParamSerializer) ->
+services.factory('LanguageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class LanguageService
 
-      getLanguages : () ->
-          # COMMENT OUT WHEN API READY
-          # return $http.get('/lang).then((response) -> response.data.results)
-          dummy_languages = [{
-            id:1,
-            name:'English Nigeria',
-            code:'eng_ng'
-          },
-          {
-            id:2,
-            name:'English South Africa',
-            code:'eng_za'
-          },
-          {
-            id:3,
-            name:'French Nigeria',
-            code:'fr_ng'
-          }]
-          return dummy_languages
+    #----------------------------------------------------------------------------
+    # Fetch a list of available languages
+    #----------------------------------------------------------------------------
+    fetchLanguages: (search) ->
+      # params = @_searchLanguageToParams(search)
+      # return $http.get('/language/search/?' + $httpParamSerializer(params)).then((response) ->
+        # return response.data.results
+      # )
+
+      dummy_languages = [
+        {
+          id:1,
+          name:'English Nigeria',
+          code:'eng_ng'
+        },
+        {
+          id:2,
+          name:'English South Africa',
+          code:'eng_za'
+        },
+        {
+          id:3,
+          name:'French Nigeria',
+          code:'fr_ng'
+        }
+      ]
+      return dummy_languages
+
+    #----------------------------------------------------------------------------
+    # Convert search object to URL params
+    #----------------------------------------------------------------------------
+    _searchLanguageToParams: (search) ->
+      return {
+        text: search.text,
+        label: if search.label then search.label.id else null
+      }
 
     #----------------------------------------------------------------------------
     # Delete the given language
