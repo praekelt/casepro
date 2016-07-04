@@ -133,8 +133,8 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
 #=====================================================================
 # FAQ service
 #=====================================================================
-services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
-  new class FAQService
+services.factory('FaqService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
+  new class FaqService
 
     #----------------------------------------------------------------------------
     # Fetch FAQs to use in replies
