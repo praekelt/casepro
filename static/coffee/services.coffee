@@ -150,8 +150,9 @@ services.factory('FAQService', ['$rootScope', '$http', '$httpParamSerializer', (
     #----------------------------------------------------------------------------
     _searchFaqsToParams: (search) ->
       return {
+        label: if search.label then search.label.id else null,
         text: search.text,
-        label: if search.label then search.label.id else null
+        language: search.language
       }
 
     #----------------------------------------------------------------------------
@@ -173,37 +174,19 @@ services.factory('LanguageService', ['$rootScope', '$http', '$httpParamSerialize
     # Fetch a list of available languages
     #----------------------------------------------------------------------------
     fetchLanguages: (search) ->
-      # params = @_searchLanguageToParams(search)
-      # return $http.get('/language/search/?' + $httpParamSerializer(params)).then((response) ->
-        # return response.data.results
-      # )
+      params = @_searchLanguageToParams(search)
+      return $http.get('/language/search/?' + $httpParamSerializer(params)).then((response) ->
+        return response.data.results
+      )
 
-      dummy_languages = [
-        {
-          id:1,
-          name:'English Nigeria',
-          code:'eng_ng'
-        },
-        {
-          id:2,
-          name:'English South Africa',
-          code:'eng_za'
-        },
-        {
-          id:3,
-          name:'French Nigeria',
-          code:'fr_ng'
-        }
-      ]
-      return dummy_languages
 
     #----------------------------------------------------------------------------
     # Convert search object to URL params
     #----------------------------------------------------------------------------
     _searchLanguageToParams: (search) ->
       return {
-        text: search.text,
-        label: if search.label then search.label.id else null
+        name: search.name
+        location: search.location,
       }
 
     #----------------------------------------------------------------------------
