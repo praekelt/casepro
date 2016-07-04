@@ -23,7 +23,13 @@ describe('services:', () ->
 
       # partners
       moh: {id: 301, name: "MOH"},
-      who: {id: 302, name: "WHO"}
+      who: {id: 302, name: "WHO"},
+
+      # languages
+      eng_ng: {id: 601, name: "English"},
+
+      # faqs
+      pregnant: {id: 701, name: "Pregnant"},
     }
   )
 
@@ -45,7 +51,7 @@ describe('services:', () ->
         is_closed: false
       }
     ))
-    
+
     describe('addNote', () ->
       it('posts to note endpoint', () ->
         $httpBackend.expectPOST('/case/note/501/', {note: "Hello there"}).respond('')
@@ -58,7 +64,9 @@ describe('services:', () ->
       it('gets cases from search endpoint', () ->
         $httpBackend.expectGET('/case/search/?folder=open').respond('{"results":[{"id":501,"opened_on":"2016-05-17T08:49:13.698864"}],"has_more":true}')
         CaseService.fetchOld({folder: "open"}).then((data) ->
-          expect(data.results).toEqual([{id: 501, opened_on: utcdate(2016, 5, 17, 8, 49, 13, 698)}])
+          expect(data.results).toEqual([{
+            id: 501,
+            opened_on: utcdate(2016, 5, 17, 8, 49, 13, 698)}])
           expect(data.hasMore).toEqual(true)
         )
         $httpBackend.flush()
@@ -144,7 +152,7 @@ describe('services:', () ->
         $httpBackend.flush()
       )
     )
-    
+
     describe('replyTo', () ->
       it('posts to reply endpoint', () ->
         $httpBackend.expectPOST('/case/reply/501/', {text: "Hello there"}).respond('')
@@ -312,6 +320,48 @@ describe('services:', () ->
   )
 
   #=======================================================================
+  # Tests for FaqService
+  #=======================================================================
+  describe('FaqService', () ->
+    FaqService = null
+
+    beforeEach(inject((_FaqService_) ->
+      FaqService = _FaqService_
+
+      test.faq1 = {
+        id: 702,
+        question: "test question 2",
+        answer: "test answer 2",
+        labels: [test.tea]
+      }
+    ))
+
+    describe('fetchFaqs', () ->
+      it('gets FAQs from search endpoint', () ->
+        $httpBackend.expectGET('/faq/search/?label=201')
+        .respond('{
+          "results": [{
+            "id": 702,
+            "question": "example question 1",
+            "answer": "example answer 1",
+            "labels": [201]
+          }],
+          "has_more": false
+        }')
+        FaqService.fetchFaqs({label: {id: 201}}).then((replies) ->
+          expect(replies).toEqual([{
+            id: 702,
+            question: "example question 1",
+            answer: "example answer 1",
+            labels: [201]
+          }])
+        )
+        $httpBackend.flush()
+      )
+    )
+  )
+
+  #=======================================================================
   # Tests for OutgoingService
   #=======================================================================
   describe('OutgoingService', () ->
@@ -435,7 +485,7 @@ describe('services:', () ->
         expect($window.location.replace).toHaveBeenCalledWith("http://example.com")
       )
     )
-    
+
     describe('navigateBack', () ->
       it('calls history.back', () ->
         spyOn($window.history, 'back')

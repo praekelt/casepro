@@ -3,17 +3,65 @@
 .modal-header
   %h3.modal-title
     - trans "Reply"
-  .modal-body
+  .modal-body{style:"height: 60%",ng-init:'init()'}
     %p
       - trans "Send the following reply to each contact and archive each message. This will remove the messages from your inbox."
-
     %form{ name:"form", novalidate:"" }
-      .form-group{ ng-class:'{"has-error": form.text.$invalid && (form.text.$dirty || form.submitted)}' }
-        %textarea.form-control{ ng-model:"fields.text.val", ng-maxlength:"fields.text.maxLength", name:"text", required:"" }
-        .help-block{ ng-show:"form.text.$error.required && (form.text.$dirty || form.submitted)" }
-          - trans "Required"
-        .help-block{ ng-show:"form.text.$error.maxlength" }
-          - trans "Too long"
+      .form-group
+        .well.well-small.col-md-12
+          %small
+            %label.control-label
+                -trans "Labelled with"
+          .row
+            %ul.nav.nav-pills.btn-group-xs.col-md-12{data-toggle:'buttons'}
+              %li.btn.btn-sm{ng-repeat:'label in labels',ng-click:'fetchFaqs(label)',aria-pressed:"true",style:"label.active{background:blue}"}
+                  %input{type:'radio'}
+                    %a.glyphicon.glyphicon-tag
+                      [[label.name]]
+
+          %br
+          .row
+            %small.col-md-2
+              %label.control-label
+                  -trans "Containing"
+            .input-group.col-md-10
+                %input.form-control{ type:"text", placeholder:'Keyword',ng-model:'search.text',style:'width:250px' }
+                %button.btn.btn-default{ type:"button", ng-click:"fetchFaqs()" }
+                    %span.glyphicon.glyphicon-search
+                    - trans "Search"
+          %br
+          %small
+            %label.control-label
+                -trans "Written in &nbsp &nbsp "
+          .btn-group{ uib-dropdown:"true" }
+            %button.btn.btn-default.dropdown-toggle{ type:"button", uib-dropdown-toggle:"true" }
+              [[lang]]
+              %span.caret
+            %ul.dropdown-menu
+              %li{ng-repeat:'language in languages'}
+                %a{ ng-click:"filterByLanguage(language)" }
+                  [[language.code]]
+
+      .form-group
+        %ul.list-group.col-md-12.col-xs-12{style:'overflow-x:auto;max-height:20vh;'}
+          %li.text-center{ng-repeat:"reply in replies"}
+            %a.small.list-group-item{ng-click:"setResponse(reply.answer)"}
+              %b[[reply.question]]
+              %p[[reply.answer]]
+
+      - if user_is_admin
+        .form-group{ ng-class:'{"has-error": form.text.$invalid && (form.text.$dirty || form.submitted)}' }
+          %textarea.form-control{ ng-model:"fields.text.val", ng-maxlength:"fields.text.maxLength", name:"text", required:"" }
+            .help-block{ ng-show:"form.text.$error.required && (form.text.$dirty || form.submitted)" }
+              - trans "Required"
+            .help-block{ ng-show:"form.text.$error.maxlength" }
+              - trans "Too long"
+      - else
+        .form-group
+          %textarea.form-control{ ng-model:"fields.text.val", ng-maxlength:"fields.text.maxLength", name:"text", required:"", readonly:"" }
+
+
+
   .modal-footer
     %button.btn.btn-primary{ ng-click:"ok()" }
       - trans "Send & Archive"

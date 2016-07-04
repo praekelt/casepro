@@ -8,7 +8,6 @@ services = angular.module('cases.services', ['cases.modals']);
 #=====================================================================
 # Incoming message service
 #=====================================================================
-
 services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class MessageService
 
@@ -20,7 +19,6 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       if !search.before
         params.before = utils.formatIso8601(before)
       params.page = page
-
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
@@ -133,9 +131,76 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
 
 
 #=====================================================================
-# Incoming message service
+# FAQ service
 #=====================================================================
+services.factory('FaqService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
+  new class FaqService
 
+    #----------------------------------------------------------------------------
+    # Fetch FAQs to use in replies
+    #----------------------------------------------------------------------------
+    fetchFaqs: (search) ->
+      params = @_searchFaqsToParams(search)
+      return $http.get('/faq/search/?' + $httpParamSerializer(params)).then((response) ->
+        return response.data.results
+      )
+
+    #----------------------------------------------------------------------------
+    # Convert search object to URL params
+    #----------------------------------------------------------------------------
+    _searchFaqsToParams: (search) ->
+      return {
+        label: if search.label then search.label.id else null,
+        text: search.text,
+        language: search.language
+      }
+
+    #----------------------------------------------------------------------------
+    # Delete the given FAQ
+    #----------------------------------------------------------------------------
+    delete: (faq) ->
+      return $http.post('/faq/delete/' + faq.id + '/')
+
+])
+
+
+#=====================================================================
+# Language service
+#=====================================================================
+services.factory('LanguageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
+  new class LanguageService
+
+    #----------------------------------------------------------------------------
+    # Fetch a list of available languages
+    #----------------------------------------------------------------------------
+    fetchLanguages: (search) ->
+      params = @_searchLanguageToParams(search)
+      return $http.get('/language/search/?' + $httpParamSerializer(params)).then((response) ->
+        return response.data.results
+      )
+
+
+    #----------------------------------------------------------------------------
+    # Convert search object to URL params
+    #----------------------------------------------------------------------------
+    _searchLanguageToParams: (search) ->
+      return {
+        name: search.name
+        location: search.location,
+      }
+
+    #----------------------------------------------------------------------------
+    # Delete the given language
+    #----------------------------------------------------------------------------
+    delete: (language) ->
+      return $http.post('/language/delete/' + language.id + '/')
+
+  ])
+
+
+#=====================================================================
+# Outgoing message service
+#=====================================================================
 services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class OutgoingService
 
@@ -189,7 +254,6 @@ services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerialize
 #=====================================================================
 # Case service
 #=====================================================================
-
 services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($http, $httpParamSerializer, $window) ->
   new class CaseService
 
@@ -327,7 +391,6 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
 #=====================================================================
 # Label service
 #=====================================================================
-
 services.factory('LabelService', ['$http', ($http) ->
   new class LabelService
 
@@ -370,34 +433,6 @@ services.factory('UserService', ['$http', ($http) ->
     #----------------------------------------------------------------------------
     delete: (user) ->
       return $http.post('/user/delete/' + user.id + '/')
-])
-
-
-#=====================================================================
-# Language service
-#=====================================================================
-services.factory('LanguageService', ['$http', ($http) ->
-  new class LanguageService
-
-    #----------------------------------------------------------------------------
-    # Delete the given language
-    #----------------------------------------------------------------------------
-    delete: (language) ->
-      return $http.post('/language/delete/' + language.id + '/')
-])
-
-
-#=====================================================================
-# Faq service
-#=====================================================================
-services.factory('FaqService', ['$http', ($http) ->
-  new class FaqService
-
-    #----------------------------------------------------------------------------
-    # Delete the given faq
-    #----------------------------------------------------------------------------
-    delete: (faq) ->
-      return $http.post('/faq/delete/' + faq.id + '/')
 ])
 
 

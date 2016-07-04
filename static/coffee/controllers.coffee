@@ -84,7 +84,6 @@ controllers.controller('HomeController', ['$scope', '$window', '$location', 'Lab
 # infinite scrolling, e.g. lists of messages, cases etc
 #============================================================================
 controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope, UtilsService) ->
-
   $scope.items = []
   $scope.oldItemsLoading = false
   $scope.oldItemsPage = 0
@@ -189,7 +188,6 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'MessageService', 'CaseService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, MessageService, CaseService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
-
   $scope.advancedSearch = false
   $scope.expandedMessageId = null
 
@@ -265,7 +263,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     )
 
   $scope.onReplyToSelection = () ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController',scope :$scope, resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
     .result.then((text) ->
       MessageService.bulkReply($scope.selection, text).then(() ->
         MessageService.bulkArchive($scope.selection).then(() ->
