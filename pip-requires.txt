@@ -30,3 +30,4 @@ raven
 regex
 sorl-thumbnail
 xlutils
+dj-database-url
