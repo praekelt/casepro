@@ -12,7 +12,7 @@ else:
     DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
-COMPRESS_ENABLED = True
+COMPRESS_ENABLED = False
 
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost:8000')
 
