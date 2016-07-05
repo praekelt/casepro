@@ -5,24 +5,43 @@ import six
 from collections import defaultdict
 from dash.orgs.views import OrgPermsMixin, OrgObjPermsMixin
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.core.urlresolvers import reverse
 from django.utils.timesince import timesince
 from django.utils.translation import ugettext_lazy as _
+from django.utils.timezone import now
 from el_pagination.paginators import LazyPaginator
 from smartmin.mixins import NonAtomicMixin
 from smartmin.views import SmartCRUDL, SmartTemplateView
-from smartmin.views import SmartListView, SmartCreateView, SmartUpdateView, SmartDeleteView
+from smartmin.views import (SmartListView, SmartCreateView, SmartUpdateView, SmartDeleteView, SmartReadView,
+                            SmartCSVImportView)
+from smartmin.csv_imports.models import ImportTask
 from temba_client.utils import parse_iso8601
 
 from casepro.rules.models import ContainsTest, GroupsTest, Quantifier
 from casepro.utils import parse_csv, str_to_bool, json_encode, JSONEncoder
 from casepro.utils.export import BaseDownloadView
 
-from .forms import LabelForm
-from .models import Label, Message, MessageExport, MessageFolder, Outgoing, OutgoingFolder, ReplyExport
+from .forms import LabelForm, LanguageForm, FaqForm
+from .models import Label, Language, FAQ, Message, MessageExport, MessageFolder, Outgoing, OutgoingFolder, ReplyExport
 from .tasks import message_export, reply_export
 
 
 RESPONSE_DELAY_WARN_SECONDS = 24 * 60 * 60  # show response delays > 1 day as warning
+
+
+# Override the ImportTask start method so we can use our self-defined task
+def override_start(self, org):
+    from .tasks import faq_csv_import
+    self.log("Queued import at %s" % now())
+    self.save(update_fields=['import_log'])
+
+    # trigger task
+    result = faq_csv_import.delay(org, self.pk)
+
+    self.task_id = result.task_id
+    self.save(update_fields=['task_id'])
+
+ImportTask.start = override_start
 
 
 class LabelFormMixin(object):
@@ -127,6 +146,217 @@ class LabelCRUDL(SmartCRUDL):
 
         def get_partners(self, obj):
             return ', '.join([p.name for p in obj.get_partners()])
+
+
+class LanguageSearchMixin(object):
+    def derive_search(self):
+        """
+        Collects and prepares Language search parameters into JSON serializable dict
+        """
+        name = self.request.GET.get('name', None)
+        location = self.request.GET.get('location', None)
+
+        return {
+            'name': name,
+            'location': location,
+        }
+
+
+class LanguageCRUDL(SmartCRUDL):
+    model = Language
+    actions = ('list', 'create', 'read', 'update', 'delete', 'search')
+
+    class List(OrgPermsMixin, SmartListView):
+        fields = ('code', 'name', 'location')
+        default_order = ('code',)
+
+    class Create(OrgPermsMixin, SmartCreateView):
+        form_class = LanguageForm
+
+        def get_form_kwargs(self):
+            kwargs = super(LanguageCRUDL.Create, self).get_form_kwargs()
+            return kwargs
+
+        def save(self, obj):
+            data = self.form.cleaned_data
+            org = self.request.org
+            code = data['code']
+            name = data['name']
+            location = data['location']
+
+            self.object = Language.objects.create(org=org, code=code, name=name, location=location)
+
+    class Read(OrgPermsMixin, SmartReadView):
+        fields = ['code', 'name', 'location']
+
+        def get_queryset(self):
+            return Language.objects.all()
+
+        def get_context_data(self, **kwargs):
+            context = super(LanguageCRUDL.Read, self).get_context_data(**kwargs)
+            edit_button_url = reverse('msgs.language_update', args=[self.object.pk])
+            context['context_data_json'] = json_encode({'language': self.object.as_json()})
+            context['edit_button_url'] = edit_button_url
+            context['can_delete'] = True
+
+            return context
+
+    class Update(OrgPermsMixin, SmartUpdateView):
+        form_class = LanguageForm
+
+    class Delete(OrgPermsMixin, SmartDeleteView):
+        cancel_url = '@msgs.language_list'
+
+        def post(self, request, *args, **kwargs):
+            language = self.get_object()
+            language.delete()
+
+            return HttpResponse(status=204)
+
+    class Search(OrgPermsMixin, LanguageSearchMixin, SmartTemplateView):
+        """
+        JSON endpoint for searching Languages
+        """
+        def get_context_data(self, **kwargs):
+            context = super(LanguageCRUDL.Search, self).get_context_data(**kwargs)
+
+            org = self.request.org
+            user = self.request.user
+            page = int(self.request.GET.get('page', 1))
+
+            search = self.derive_search()
+            languages = Language.search(org, user, search)
+            paginator = LazyPaginator(languages, per_page=50)
+
+            context['object_list'] = paginator.page(page)
+            context['has_more'] = paginator.num_pages > page
+            return context
+
+        def render_to_response(self, context, **response_kwargs):
+            return JsonResponse({
+                'results': [m.as_json() for m in context['object_list']],
+                'has_more': context['has_more']
+            }, encoder=JSONEncoder)
+
+
+class FaqSearchMixin(object):
+    def derive_search(self):
+        """
+        Collects and prepares FAQ search parameters into JSON serializable dict
+        """
+        label = self.request.GET.get('label', None)
+        text = self.request.GET.get('text', None)
+        language = self.request.GET.get('language', None)
+
+        return {
+            'label': label,
+            'text': text,
+            'language': language,
+        }
+
+
+class FaqCRUDL(SmartCRUDL):
+    model = FAQ
+    actions = ('list', 'create', 'read', 'update', 'delete', 'search', 'import')
+
+    class List(OrgPermsMixin, SmartListView):
+        fields = ('question', 'answer', 'language', 'parent')
+        default_order = ('-parent', 'question')
+
+    class Create(OrgPermsMixin, SmartCreateView):
+        form_class = FaqForm
+
+        def get_form_kwargs(self):
+            kwargs = super(FaqCRUDL.Create, self).get_form_kwargs()
+            return kwargs
+
+        def save(self, obj):
+            data = self.form.cleaned_data
+            org = self.request.org
+            question = data['question']
+            answer = data['answer']
+            language = data['language']
+            parent = data['parent']
+            labels = data['labels']
+
+            faq = FAQ.objects.create(org=org, question=question, answer=answer, language=language, parent=parent)
+            faq.labels.add(*labels)
+            faq.save()
+            self.object = faq
+
+    class Read(OrgPermsMixin, SmartReadView):
+        fields = ['question', 'answer', 'language', 'parent']
+
+        def get_queryset(self):
+            return FAQ.objects.all()
+
+        def get_context_data(self, **kwargs):
+            context = super(FaqCRUDL.Read, self).get_context_data(**kwargs)
+            edit_button_url = reverse('msgs.faq_update', args=[self.object.pk])
+            context['context_data_json'] = json_encode({'faq': self.object.as_json()})
+            context['edit_button_url'] = edit_button_url
+            context['can_delete'] = True
+
+            labels = []
+            for label in self.object.labels.all():
+                labels.append(label.name)
+            context['labels'] = ', '.join(labels)
+            return context
+
+    class Update(OrgPermsMixin, SmartUpdateView):
+        form_class = FaqForm
+
+        def derive_initial(self):
+            initial = super(FaqCRUDL.Update, self).derive_initial()
+            initial['labels'] = self.object.labels.all()
+            return initial
+
+    class Delete(OrgPermsMixin, SmartDeleteView):
+        cancel_url = '@msgs.faq_list'
+
+        def post(self, request, *args, **kwargs):
+            faq = self.get_object()
+            faq.delete()
+
+            return HttpResponse(status=204)
+
+    class Search(OrgPermsMixin, FaqSearchMixin, SmartTemplateView):
+        """
+        JSON endpoint for searching FAQs
+        """
+        def get_context_data(self, **kwargs):
+            context = super(FaqCRUDL.Search, self).get_context_data(**kwargs)
+
+            org = self.request.org
+            user = self.request.user
+            page = int(self.request.GET.get('page', 1))
+
+            search = self.derive_search()
+            faqs = FAQ.search(org, user, search)
+            paginator = LazyPaginator(faqs, per_page=50)
+
+            context['object_list'] = paginator.page(page)
+            context['has_more'] = paginator.num_pages > page
+            return context
+
+        def render_to_response(self, context, **response_kwargs):
+            return JsonResponse({
+                'results': [m.as_json() for m in context['object_list']],
+                'has_more': context['has_more']
+            }, encoder=JSONEncoder)
+
+    class Import(OrgPermsMixin, SmartCSVImportView):
+        model = ImportTask
+        fields = ('csv_file',)
+        success_message = "File uploaded successfully. If your FAQs don't appear here soon, something went wrong."
+        success_url = '@msgs.faq_list'
+
+        def derive_title(self):
+            return _("Import FAQs")
+
+        def post_save(self, task):
+            task.start(self.org)
+            return task
 
 
 class MessageSearchMixin(object):

@@ -84,7 +84,6 @@ controllers.controller('HomeController', ['$scope', '$window', '$location', 'Lab
 # infinite scrolling, e.g. lists of messages, cases etc
 #============================================================================
 controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope, UtilsService) ->
-
   $scope.items = []
   $scope.oldItemsLoading = false
   $scope.oldItemsPage = 0
@@ -189,7 +188,6 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'MessageService', 'CaseService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, MessageService, CaseService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
-
   $scope.advancedSearch = false
   $scope.expandedMessageId = null
 
@@ -265,7 +263,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     )
 
   $scope.onReplyToSelection = () ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController',scope :$scope, resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
     .result.then((text) ->
       MessageService.bulkReply($scope.selection, text).then(() ->
         MessageService.bulkArchive($scope.selection).then(() ->
@@ -601,6 +599,38 @@ controllers.controller('UserController', ['$scope', '$window', 'UtilsService', '
     UtilsService.confirmModal("Delete this user?", 'danger').then(() ->
       UserService.delete($scope.user).then(() ->
         UtilsService.navigateBack()
+      )
+    )
+])
+
+
+#============================================================================
+# Language view controller
+#============================================================================
+controllers.controller('LanguageController', ['$scope', '$window', 'UtilsService', 'LanguageService', ($scope, $window, UtilsService, LanguageService) ->
+
+  $scope.language = $window.contextData.language
+
+  $scope.onDeleteLanguage = () ->
+    UtilsService.confirmModal("Delete this Language?", 'danger').then(() ->
+      LanguageService.delete($scope.language).then(() ->
+        UtilsService.navigate('/language/')
+      )
+    )
+])
+
+
+#============================================================================
+# Faq view controller
+#============================================================================
+controllers.controller('FaqController', ['$scope', '$window', 'UtilsService', 'FaqService', ($scope, $window, UtilsService, FaqService) ->
+
+  $scope.faq = $window.contextData.faq
+
+  $scope.onDeleteFaq = () ->
+    UtilsService.confirmModal("Warning! If this FAQ has any linked translation FAQs, they will be also be deleted. Delete this FAQ?", 'danger').then(() ->
+      FaqService.delete($scope.faq).then(() ->
+        UtilsService.navigate('/faq/')
       )
     )
 ])
