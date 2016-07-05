@@ -37,3 +37,17 @@ IDENTITY_AUTH_TOKEN = os.environ.get('IDENTITY_AUTH_TOKEN',
                                      'replace-with-auth-token')
 IDENTITY_ADDRESS_TYPE = os.environ.get('IDENTITY_ADDRESS_TYPE',
                                        'msisdn')
+
+REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost:6379')
+
+BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
+CELERY_RESULT_BACKEND = BROKER_URL
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.cache.RedisCache',
+        'LOCATION': '%s:15' % REDIS_HOST,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'redis_cache.client.DefaultClient',
+        }
+    }
+}
