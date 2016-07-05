@@ -1,5 +1,5 @@
 FROM praekeltfoundation/django-bootstrap
-RUN apt-get-install.sh git && \
+RUN apt-get-install.sh git libjpeg-dev zlib1g-dev && \
     pip install -r pip-freeze.txt && \
     apt-get-purge.sh git
 
