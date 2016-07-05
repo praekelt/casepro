@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import os
+import dj_database_url
 
 # import our default settings
 from settings_common import *  # noqa

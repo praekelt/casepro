@@ -12,7 +12,6 @@ setup(
     author_email='dev@praekeltfoundation.org',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Framework :: Django',
