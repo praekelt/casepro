@@ -12,8 +12,6 @@ else:
     DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
-COMPRESS_ENABLED = False
-
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost:8000')
 
 SITE_API_HOST = os.environ.get('SITE_API_HOST', 'http://localhost:8001/')
