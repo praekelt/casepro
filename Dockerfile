@@ -7,4 +7,3 @@ ENV APP_MODULE "casepro.wsgi:application"
 RUN pip install -r pip-freeze.txt
 RUN npm install -g less coffee-script
 RUN ./manage.py collectstatic --noinput
-RUN ./manage.py compress
