@@ -20,6 +20,7 @@ from casepro.msgs.models import Label, Message, MessageFolder, Outgoing, Outgoin
 from casepro.utils import json_encode, datetime_to_microseconds, microseconds_to_datetime, JSONEncoder
 from casepro.utils import month_range
 from casepro.utils.export import BaseDownloadView
+from casepro.pods.registry import get_configs as get_pod_configs
 
 from . import MAX_MESSAGE_CHARS
 from .forms import PartnerForm
@@ -75,6 +76,7 @@ class CaseCRUDL(SmartCRUDL):
             context['max_msg_chars'] = MAX_MESSAGE_CHARS
             context['can_update'] = can_update
             context['alert'] = self.request.GET.get('alert', None)
+            context['pods'] = get_pod_configs()
             return context
 
     class Open(OrgPermsMixin, SmartCreateView):

@@ -12,6 +12,7 @@ urlpatterns = [
     url(r'', include('casepro.contacts.urls')),
     url(r'', include('casepro.msgs.urls')),
     url(r'', include('casepro.profiles.urls')),
+    url(r'^plugins/', include('casepro.pods.urls')),
     url(r'^manage/', include('casepro.orgs_ext.urls')),
     url(r'^users/', include('dash.users.urls')),
     url(r'^i18n/', include('django.conf.urls.i18n')),
