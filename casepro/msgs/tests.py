@@ -17,10 +17,11 @@ from xlrd import open_workbook
 from casepro.contacts.models import Contact
 from casepro.rules.models import ContainsTest, GroupsTest, FieldTest, Quantifier
 from casepro.test import BaseCasesTest
+from smartmin.csv_imports.models import ImportTask
 
 from .models import (Label, Language, FAQ, Message, MessageAction, MessageExport, MessageFolder, Outgoing,
                      OutgoingFolder, ReplyExport)
-from .tasks import handle_messages, pull_messages
+from .tasks import handle_messages, pull_messages, faq_csv_import
 
 
 class LabelTest(BaseCasesTest):
@@ -602,6 +603,92 @@ class FaqCRUDLTest(BaseCasesTest):
             'text': "arv"
         })
         self.assertEqual(len(response.json['results']), 1)
+
+
+class FaqImportTest(BaseCasesTest):
+    def create_importtask(self, user, filename):
+        task = ImportTask.objects.create(
+            created_by=user,
+            modified_by=user,
+            csv_file='test_imports/%s' % filename,
+            model_class="casepro.msgs.models.FAQ",
+            import_log="")
+        return task
+
+    def test_good_imports(self):
+        # store situation before import
+        num_languages = Language.objects.all().count()
+        num_faqs = FAQ.objects.all().count()
+        num_faqs_translations = FAQ.objects.filter(parent__isnull=False).count()
+        num_faqs_parents = FAQ.objects.filter(parent__isnull=True).count()
+        num_faqs_parents_no_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=True).count()
+        num_faqs_parents_have_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=False).count()
+
+        # create the importtask object
+        importtask = self.create_importtask(self.admin, 'faq_good_import.csv')
+
+        # check task_id is None at this point
+        self.assertEqual(importtask.task_id, None)
+
+        # run the import
+        result = faq_csv_import(self.unicef, importtask.pk)
+
+        # check situation after import
+        self.assertEqual(Language.objects.all().count(), num_languages + 2)
+        self.assertEqual(FAQ.objects.all().count(), num_faqs + 9)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations + 6)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations + 0)
+
+        # check task_id is not in returned result since we're calling directly, not using .delay
+        self.assertIsNone(result.task_id)
+
+        # test running the same import again creates duplicates of the FAQs, but not the languages
+        # run the import
+        result = faq_csv_import(self.unicef, importtask.pk)
+
+        # check situation after second import
+        self.assertEqual(Language.objects.all().count(), num_languages + 2 + 0)
+        self.assertEqual(FAQ.objects.all().count(), num_faqs + 9 + 9)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations + 6 + 6)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents + 3 + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations + 3 + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations + 0 + 0)
+
+    def test_bad_imports(self):
+        # store situation before import
+        num_languages = Language.objects.all().count()
+        num_faqs = FAQ.objects.all().count()
+        num_faqs_translations = FAQ.objects.filter(parent__isnull=False).count()
+        num_faqs_parents = FAQ.objects.filter(parent__isnull=True).count()
+        num_faqs_parents_no_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=True).count()
+        num_faqs_parents_have_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=False).count()
+
+        # Import problem: labels don't match existing labels
+        # create the importtask object
+        importtask = self.create_importtask(self.admin, 'faq_bad_import_labels.csv')
+        # run the import, expect an exception
+        with self.assertRaises(Label.DoesNotExist):
+            faq_csv_import(self.unicef, importtask.pk).get()
+
+        # check situation after import - nothing should have changed
+        self.assertEqual(Language.objects.all().count(), num_languages)
+        self.assertEqual(FAQ.objects.all().count(), num_faqs)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations)
 
 
 class MessageTest(BaseCasesTest):
