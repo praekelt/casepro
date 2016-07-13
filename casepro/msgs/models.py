@@ -146,9 +146,9 @@ class FAQ(models.Model):
     """
     org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='faqs')
 
-    question = models.CharField(max_length=140)
+    question = models.CharField(max_length=255)
 
-    answer = models.CharField(max_length=140)
+    answer = models.TextField()
 
     language = models.ForeignKey(Language, verbose_name=('Language'), related_name='faqs', default=None)
 
