@@ -320,6 +320,78 @@ describe('services:', () ->
   )
 
   #=======================================================================
+  # Tests for LanguageService
+  #=======================================================================
+  describe('LanguageService', () ->
+    LanguageService = null
+
+    beforeEach(inject((_LanguageService_) ->
+      LanguageService = _LanguageService_
+
+      test.language = {
+        id: 602,
+        code: "afr_ZA",
+        name: "Afrikaans",
+        location: "South Africa"
+      }
+    ))
+
+    describe('fetchLanguages', () ->
+      it('gets Languages from search endpoint', () ->
+        $httpBackend.expectGET('/language/search/?name=afr')
+        .respond('{
+          "results": [{
+            "id": 602,
+            "code": "afr_ZA",
+            "name": "Afrikaans",
+            "location": "South Africa"
+          }],
+          "has_more": false
+        }')
+        LanguageService.fetchLanguages({name: "afr"}).then((replies) ->
+          expect(replies).toEqual([{
+            id: 602,
+            code: "afr_ZA",
+            name: "Afrikaans",
+            location: "South Africa"
+          }])
+        )
+        $httpBackend.flush()
+      )
+
+      it('gets Languages from search endpoint with multiple filters', () ->
+        $httpBackend.expectGET('/language/search/?location=Africa&name=afr')
+        .respond('{
+          "results": [{
+            "id": 602,
+            "code": "afr_ZA",
+            "name": "Afrikaans",
+            "location": "South Africa"
+          }],
+          "has_more": false
+        }')
+        LanguageService.fetchLanguages({name: "afr", location: "Africa"}).then((replies) ->
+          expect(replies).toEqual([{
+            id: 602,
+            code: "afr_ZA",
+            name: "Afrikaans",
+            location: "South Africa"
+          }])
+        )
+        $httpBackend.flush()
+      )
+    )
+
+    describe('delete', () ->
+      it('posts to delete endpoint', () ->
+        $httpBackend.expectPOST('/language/delete/602/', null).respond("")
+        LanguageService.delete(test.language)
+        $httpBackend.flush()
+      )
+    )
+  )
+
+  #=======================================================================
   # Tests for FaqService
   #=======================================================================
   describe('FaqService', () ->
@@ -356,6 +428,36 @@ describe('services:', () ->
             labels: [201]
           }])
         )
+        $httpBackend.flush()
+      )
+
+      it('gets FAQs from search endpoint with multiple filters', () ->
+        $httpBackend.expectGET('/faq/search/?label=201&text=example')
+        .respond('{
+          "results": [{
+            "id": 702,
+            "question": "example question 1",
+            "answer": "example answer 1",
+            "labels": [201]
+          }],
+          "has_more": false
+        }')
+        FaqService.fetchFaqs({label: {id: 201}, text: "example"}).then((replies) ->
+          expect(replies).toEqual([{
+            id: 702,
+            question: "example question 1",
+            answer: "example answer 1",
+            labels: [201]
+          }])
+        )
+        $httpBackend.flush()
+      )
+    )
+
+    describe('delete', () ->
+      it('posts to delete endpoint', () ->
+        $httpBackend.expectPOST('/faq/delete/702/', null).respond("")
+        FaqService.delete(test.faq1)
         $httpBackend.flush()
       )
     )
