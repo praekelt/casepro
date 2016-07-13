@@ -174,6 +174,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'casepro.cases.context_processors.sentry_dsn',
     'casepro.cases.context_processors.server_time',
     'casepro.profiles.context_processors.user_is_admin',
+    'casepro.profiles.context_processors.user_must_reply_with_faq',
 )
 
 ROOT_URLCONF = 'casepro.urls'
