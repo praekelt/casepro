@@ -52,7 +52,7 @@ CACHES = {
     }
 }
 
-INSTALLED_APPS += ('casepro.dummy.plugin.DummyPodPlugin',)
+INSTALLED_APPS += ('casepro.dummypod.plugin.DummyPodPlugin',)
 
 PODS = [{
     'label': 'dummy_pod',
