@@ -56,4 +56,4 @@ wsgiref==0.1.2
 xlrd==0.9.4
 xlutils==1.7.1
 xlwt==1.0.0
--e git+https://github.com/praekelt/casepro.pods.dummy.git@different-namespace#egg=casepro.pods.dummy
+-e git+https://github.com/praekelt/casepro.pods.dummy.git@different-namespace#egg=casepro.dummypod
