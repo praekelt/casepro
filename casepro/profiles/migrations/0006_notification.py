@@ -18,7 +18,7 @@ CREATE INDEX profiles_notification_created_on_unsent ON profiles_notification(cr
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cases', '0039_populate_case_watchers'),
+        ('cases', '0041_populate_case_watchers'),
         ('msgs', '0050_label_watchers'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('orgs', '0016_taskstate_is_disabled'),

@@ -28,7 +28,7 @@ def populate_case_watchers(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cases', '0038_case_watchers'),
+        ('cases', '0040_partner_description'),
         ('msgs', '0049_remove_label_tests'),
     ]
 
