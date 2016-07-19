@@ -65,6 +65,7 @@ class CaseCRUDL(SmartCRUDL):
 
             # angular app requires context data in JSON format
             context['context_data_json'] = json_encode({
+                'case_obj': {'id': case.id},
                 'all_labels': [l.as_json() for l in labels]
             })
 
