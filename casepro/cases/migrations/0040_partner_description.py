@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cases', '0038_partner_timezone'),
+        ('cases', '0039_partner_timezone'),
     ]
 
     operations = [
