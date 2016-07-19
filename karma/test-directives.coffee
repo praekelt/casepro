@@ -1,13 +1,14 @@
 # Unit tests for our Angular directives
 
 describe('directives:', () ->
-   $compile = null
+  $compile = null
   $rootScope = null
   $templateCache = null
   $q = null
 
   beforeEach(() ->
     module('cases')
+    module('templates')
 
     inject((_$compile_, _$rootScope_, _$templateCache_, _$q_) ->
       $compile = _$compile_
@@ -61,9 +62,6 @@ describe('directives:', () ->
   describe('cpPod', () ->
     $rootScope = null
     $compile = null
-
-    beforeEach(module('templates'))
-    beforeEach(module('cases'))
 
     beforeEach(inject((_$rootScope_, _$compile_) ->
       $rootScope = _$rootScope_
