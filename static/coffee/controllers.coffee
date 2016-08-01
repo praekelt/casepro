@@ -528,7 +528,7 @@ controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'Case
   $scope.$on('notification', (e, notification) ->
     $scope.addNotification(notification))
 
-  $scope.$on('timelineChange', (e) ->
+  $scope.$on('timelineChanged', (e) ->
     $scope.$broadcast('timelineChanged') if e.targetScope != $scope)
 
   $scope.addNotification = (notification) ->
@@ -861,7 +861,7 @@ controllers.controller('DateRangeController', ['$scope', ($scope) ->
 #============================================================================
 # Pod controller
 #============================================================================
-controllers.controller('PodController', ['$q', '$scope', 'PodApiService', ($q, $scope, PodApiService) ->
+controllers.controller('PodController', ['$q', '$scope', 'PodApiService', 'CaseModals', ($q, $scope, PodApiService, CaseModals) ->
   $scope.init = (podId, caseId, podConfig) ->
     $scope.podId = podId
     $scope.caseId = caseId
@@ -877,10 +877,11 @@ controllers.controller('PodController', ['$q', '$scope', 'PodApiService', ($q, $
       .then(parsePodData)
       .then((d) -> $scope.podData = d)
 
-  $scope.trigger = (type, payload) ->
-    $scope.podData.actions = updateAction(type, {isBusy: true})
-
-    PodApiService.trigger($scope.podId, $scope.caseId, type, payload)
+  $scope.trigger = ({type, name, payload, confirm}) ->
+    $q.resolve()
+      .then(-> confirmAction(name) if confirm)
+      .then(-> $scope.podData.actions = updateAction(type, {isBusy: true}))
+      .then(-> PodApiService.trigger($scope.podId, $scope.caseId, type, payload))
       .then((res) -> onTriggerDone(type, res))
       .catch(utils.trap(PodApiService.PodApiServiceError, onTriggerApiFailure, $q.reject))
 
@@ -892,6 +893,12 @@ controllers.controller('PodController', ['$q', '$scope', 'PodApiService', ($q, $
 
     $q.resolve(p)
       .then(-> $scope.podData.actions = updateAction(type, {isBusy: false}))
+
+  confirmAction = (name) ->
+    CaseModals.confirm({
+      type: 'pod_action_confirm',
+      payload: {name}
+    })
 
   onLoadApiFailure = ->
     $scope.status = 'loading_failed'
@@ -930,10 +937,11 @@ controllers.controller('PodController', ['$q', '$scope', 'PodApiService', ($q, $
 
     d
 
-  parsePodAction = ({type, name, busy_text, payload}) -> {
+  parsePodAction = ({type, name, busy_text, confirm, payload}) -> {
     type,
     name,
     payload,
+    confirm: confirm ? false,
     busyText: busy_text ? name,
     isBusy: false
   }
