@@ -19,6 +19,15 @@ services.factory('ContactService', ['$http', ($http) ->
       return $http.get('/contact/fetch/' + id + '/').then((response) ->
         return response.data
       )
+
+    #----------------------------------------------------------------------------
+    # Fetches a contact's cases
+    #----------------------------------------------------------------------------
+    fetchCases: (contact) ->
+      return $http.get('/contact/cases/' + contact.id + '/').then((response) ->
+        utils.parseDates(response.data.results, 'opened_on')
+        return response.data.results
+      )
 ])
 
 
@@ -335,12 +344,7 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
       params = {after: after}
 
       return $http.get('/case/timeline/' + caseObj.id + '/?' + $httpParamSerializer(params)).then((response) ->
-        for event in response.data.results
-          # parse datetime string
-          event.time = utils.parseIso8601(event.time)
-          event.is_action = event.type == 'A'
-          event.is_message_in = event.type == 'M' and event.item.direction == 'I'
-          event.is_message_out = event.type == 'M' and event.item.direction == 'O'
+        utils.parseDates(response.data.results, 'time')
 
         return {results: response.data.results, maxTime: response.data.max_time}
       )
@@ -448,6 +452,12 @@ services.factory('StatisticsService', ['$http', '$httpParamSerializer', ($http, 
       return $http.get('/stats/replies_chart/?' + $httpParamSerializer(params)).then((response) -> response.data)
 
     #----------------------------------------------------------------------------
+    # Fetches data for replies by month chart
+    #----------------------------------------------------------------------------
+    labelsPieChart: () ->
+      return $http.get('/stats/labels_pie_chart/').then((response) -> response.data)
+
+    #----------------------------------------------------------------------------
     # Initiates a daily count export
     #----------------------------------------------------------------------------
     dailyCountExport: (type, after, before) ->
@@ -544,10 +554,40 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
 #=====================================================================
 # Pod API service
 #=====================================================================
-services.factory('PodApi', ['$window', '$http', ($window, $http) ->
-  new class PodApi
-    get: (podId, caseId = null) ->
-      caseId ?= $window.contextData.case_obj.id
-      $http.get("/pods/read/#{podId}/", {params: {case_id: caseId}})
+services.factory('PodApiService', ['$q', '$window', '$http', ($q, $window, $http) ->
+  class PodApiServiceError extends Error
+    constructor: (error) ->
+      this.error = error
+
+  method = (fn) ->
+    res = (args...) ->
+      $http(fn(args...))
+        .catch((e) -> $q.reject(new PodApiServiceError(e)))
         .then((d) -> d.data)
+
+    res.fn = fn
+    res
+
+  new class PodApiService
+    PodApiServiceError: PodApiServiceError,
+
+    method: method,
+
+    get: method((podId, caseId) -> {
+      method: 'GET',
+      url: "/pods/read/#{podId}/",
+      params: {case_id: caseId}
+    })
+
+    trigger: method((podId, caseId, type, payload = {}) -> {
+      method: 'POST',
+      url: "/pods/action/#{podId}/",
+      data: {
+        case_id: caseId
+        action: {
+          type,
+          payload
+        }
+      }
+    })
 ])

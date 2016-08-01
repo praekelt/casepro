@@ -12,11 +12,13 @@ from django.utils.translation import ugettext_lazy as _
 # -----------------------------------------------------------------------------------
 TESTING = sys.argv[1:2] == ['test']
 
-# Django settings for tns_glass project.
-THUMBNAIL_DEBUG = False
-
-DEBUG = True
-TEMPLATE_DEBUG = DEBUG
+if TESTING:
+    PASSWORD_HASHERS = ('django.contrib.auth.hashers.MD5PasswordHasher',)
+    DEBUG = False
+    TEMPLATE_DEBUG = False
+else:
+    DEBUG = True
+    TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
     ('Nyaruka', 'code@nyaruka.com'),
@@ -187,10 +189,10 @@ ROOT_URLCONF = 'casepro.urls'
 
 CACHES = {
     'default': {
-        'BACKEND': 'redis_cache.cache.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': '127.0.0.1:6379:15',
         'OPTIONS': {
-            'CLIENT_CLASS': 'redis_cache.client.DefaultClient',
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
 }

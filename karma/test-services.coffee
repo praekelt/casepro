@@ -73,15 +73,12 @@ describe('services:', () ->
 
     describe('fetchTimeline', () ->
       it('gets cases from timeline endpoint', () ->
-        $httpBackend.expectGET('/case/timeline/501/?after=2016-05-28T09:00:00.000Z').respond('{"results":[{"id":501,"time":"2016-05-17T08:49:13.698864","type":"A"}]}')
+        $httpBackend.expectGET('/case/timeline/501/?after=2016-05-28T09:00:00.000Z').respond('{"results":[{"time":"2016-05-17T08:49:13.698864","type":"A","item":{}}]}')
         CaseService.fetchTimeline(test.case1, utcdate(2016, 5, 28, 9, 0, 0, 0)).then((data) ->
           expect(data.results).toEqual([{
-            id: 501,
             time: utcdate(2016, 5, 17, 8, 49, 13, 698),
             type: 'A',
-            is_action: true,
-            is_message_in: false,
-            is_message_out: false
+            item: {}
           }])
         )
         $httpBackend.flush()
@@ -217,6 +214,16 @@ describe('services:', () ->
         $httpBackend.expectGET('/contact/fetch/401/').respond('{"id":401, "name":"Ann", "fields":{}}')
         ContactService.fetch(401).then((contact) ->
           expect(contact).toEqual({id: 401, name: "Ann", fields:{}})
+        )
+        $httpBackend.flush()
+      )
+    )
+
+    describe('fetchCases', () ->
+      it('gets contacts cases from fetch endpoint', () ->
+        $httpBackend.expectGET('/contact/cases/401/').respond('{"results":[{"id": 501, "opened_on": "2016-05-17T08:49:13.698864"}]}')
+        ContactService.fetchCases(test.ann).then((cases) ->
+          expect(cases).toEqual([{id: 501, opened_on: utcdate(2016, 5, 17, 8, 49, 13, 698)}])
         )
         $httpBackend.flush()
       )
@@ -614,37 +621,72 @@ describe('services:', () ->
   )
 
   #=======================================================================
-  # Tests for PodApi
+  # Tests for PodApiService
   #=======================================================================
-  describe('PodApi', () ->
-    PodApi = null
+  describe('PodApiService', () ->
+    PodApiService = null
 
-    beforeEach(inject((_PodApi_) ->
-      PodApi = _PodApi_
-      $window.contextData = {case_obj: {id: 23}}
+    beforeEach(inject((_PodApiService_) ->
+      PodApiService = _PodApiService_
     ))
 
-    describe('get', () ->
-      it('gets a pod', () ->
-        $httpBackend.expectGET('/pods/read/21/?case_id=23')
+    describe('method', () ->
+      it('constructs a pod api method', () ->
+        $httpBackend.expectGET('/pods/foo/21/?bar=23')
           .respond({foo: 'bar'})
 
-        PodApi.get(21, 23)
+        method = PodApiService.method((id, bar) -> {
+          method: 'GET',
+          url: "/pods/foo/#{id}/",
+          params: {bar}
+        })
+
+        method(21, 23)
           .then((res) -> expect(res).toEqual({foo: 'bar'}))
 
         $httpBackend.flush()
       )
 
-      it('defaults the case id to the global case id', ->
-        $window.contextData = {case_obj: {id: 23}}
+      it('rejects response errors as PodApiServiceErrors', () ->
+        $httpBackend.expectGET('/pods/foo/')
+          .respond(500)
 
-        $httpBackend.expectGET('/pods/read/21/?case_id=23')
-          .respond({foo: 'bar'})
+        method = PodApiService.method(-> {
+          method: 'GET',
+          url: "/pods/foo/"
+        })
 
-        PodApi.get(21)
-          .then((res) -> expect(res).toEqual({foo: 'bar'}))
+        method()
+          .catch((e) -> e)
+          .then((e) -> expect(e instanceof PodApiService.PodApiServiceError).toBe(true))
 
         $httpBackend.flush()
+      )
+    )
+
+    describe('get', () ->
+      it('gets a pod', () ->
+        expect(PodApiService.get.fn(21, 23)).toEqual({
+          method: 'GET',
+          url: "/pods/read/21/",
+          params: {case_id: 23}
+        })
+      )
+    )
+
+    describe('trigger', () ->
+      it('triggers an action', () ->
+        expect(PodApiService.trigger.fn(21, 23, 'foo', {bar: 'baz'})).toEqual({
+          method: 'POST',
+          url: "/pods/action/21/",
+          data: {
+            case_id: 23
+            action: {
+              type: 'foo',
+              payload: {bar: 'baz'}
+            }
+          }
+        })
       )
     )
   )

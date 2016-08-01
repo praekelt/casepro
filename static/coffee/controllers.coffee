@@ -16,6 +16,7 @@ CASE_SUMMARY_MAX_LEN = 255
 CASE_NOTE_MAX_LEN = 1024
 OUTGOING_TEXT_MAX_LEN = 480
 
+SINGLETON_NOTIFICATIONS = ['pod_load_api_failure']
 
 #============================================================================
 # Inbox controller (DOM parent of messages and cases)
@@ -25,6 +26,7 @@ controllers.controller('InboxController', ['$scope', '$window', '$location', 'La
   $scope.user = $window.contextData.user
   $scope.labels = $window.contextData.labels
   $scope.groups = $window.contextData.groups
+  $scope.fields = $window.contextData.fields
 
   $scope.activeLabel = null
   $scope.activeContact = null
@@ -36,12 +38,11 @@ controllers.controller('InboxController', ['$scope', '$window', '$location', 'La
 
     $scope.$on('$locationChangeSuccess', () ->
       params = $location.search()
-      initialLabel = null
       if 'label' of params
-        for l in $scope.labels
-            if l.name == params.label
-              initialLabel = l
-              break
+        $window.console.log(params.label)
+        initialLabel = utils.find($scope.labels, 'name', params.label)
+      else
+        initialLabel = null
 
       if $scope.activeLabel != initialLabel
         $scope.activateLabel(initialLabel)
@@ -76,12 +77,13 @@ controllers.controller('InboxController', ['$scope', '$window', '$location', 'La
 controllers.controller('BaseTabsController', ['$scope', '$location', ($scope, $location) ->
   $scope.initialisedTabs = []
 
-  path = $location.path()
-  if path
-    initialTabSlug = path.substring(1)  # ignore initial /
-    $scope.active = $scope.tabSlugs.indexOf(initialTabSlug)
-  else
-    $scope.active = 0
+  $scope.activateTabFromPath = () ->
+    path = $location.path()
+    if path
+      initialTabSlug = path.substring(1)  # ignore initial /
+      $scope.active = $scope.tabSlugs.indexOf(initialTabSlug)
+    else
+      $scope.active = 0
 
   $scope.onTabSelect = (tab) ->
     slug = $scope.tabSlugs[tab]
@@ -91,6 +93,9 @@ controllers.controller('BaseTabsController', ['$scope', '$location', ($scope, $l
     if tab not in $scope.initialisedTabs
       $scope.onTabInit(slug)
       $scope.initialisedTabs.push(tab)
+
+  $scope.activateTabFromPath()
+  $scope.$on('$locationChangeSuccess', () -> $scope.activateTabFromPath())
 ])
 
 
@@ -445,15 +450,30 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
 
   $scope.onTabInit = (tab) ->
     if tab == 'summary'
-      StatisticsService.repliesChart().then((data) ->
+      StatisticsService.repliesChart().then((chart) ->
         Highcharts.chart('chart-replies-by-month', {
           chart: {type: 'column'},
           title: {text: null},
-          xAxis: {categories: data.categories},
-          yAxis: {min: 0, title: {text: 'Replies'}},
+          xAxis: {categories: chart.categories},
+          yAxis: {min: 0, title: {text: 'Replies Sent'}},
           legend: {enabled: false},
-          series: [{name: 'Replies', data: data.series}],
-          credits: {enabled: false}
+          series: [{name: 'Replies', data: chart.series}],
+        })
+      )
+      StatisticsService.labelsPieChart().then((chart) ->
+        Highcharts.chart('chart-most-common-labels', {
+          chart: {type: 'pie'},
+          title: {text: "Message labels in last 30 days"},
+          series: [{name: 'Messages', data: chart.series}],
+        })
+      )
+      StatisticsService.incomingChart().then((chart) ->
+        Highcharts.chart('chart-incoming-by-day', {
+          title: {text: null},
+          xAxis: {type: 'datetime'},
+          yAxis: {min: 0, title: {text: "Messages Received"}},
+          legend: {enabled: false},
+          series: [{name: "Messages", data: chart.series}],
         })
       )
     else if tab == 'partners'
@@ -489,19 +509,35 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
 # Case view controller
 #============================================================================
 controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'CaseService', 'ContactService', 'MessageService', 'PartnerService', 'UtilsService', ($scope, $window, $timeout, CaseService, ContactService, MessageService, PartnerService, UtilsService) ->
-
   $scope.allLabels = $window.contextData.all_labels
+  $scope.fields = $window.contextData.fields
   
   $scope.caseObj = null
   $scope.contact = null
   $scope.newMessage = ''
   $scope.sending = false
 
+  $scope.notifications = []
+
   $scope.init = (caseId, maxMsgChars) ->
     $scope.caseId = caseId
     $scope.msgCharsRemaining = $scope.maxMsgChars = maxMsgChars
 
     $scope.refresh()
+
+  $scope.$on('notification', (e, notification) ->
+    $scope.addNotification(notification))
+
+  $scope.$on('timelineChange', (e) ->
+    $scope.$broadcast('timelineChanged') if e.targetScope != $scope)
+
+  $scope.addNotification = (notification) ->
+    if (not shouldIgnoreNotification(notification))
+      $scope.notifications.push(notification)
+
+  shouldIgnoreNotification = ({type}) ->
+    type in SINGLETON_NOTIFICATIONS and
+    $scope.notifications.some((d) -> type == d.type)
 
   $scope.refresh = () ->
     CaseService.fetchSingle($scope.caseId).then((caseObj) ->
@@ -622,6 +658,24 @@ controllers.controller('CaseTimelineController', ['$scope', '$timeout', 'CaseSer
 
 
 #============================================================================
+# Contact dashboard controller
+#============================================================================
+controllers.controller('ContactController', ['$scope', '$window', 'ContactService', ($scope, $window, ContactService) ->
+
+  $scope.contact = $window.contextData.contact
+  $scope.fields = $window.contextData.fields
+  
+  $scope.init = () ->
+    ContactService.fetchCases($scope.contact).then((cases) ->
+      $scope.cases = cases
+    )
+
+  $scope.getGroups = () ->
+    return (g.name for g in $scope.contact.groups).join(", ")
+])
+
+
+#============================================================================
 # Label dashboard controller
 #============================================================================
 controllers.controller('LabelController', ['$scope', '$window', '$controller', 'UtilsService', 'LabelService', 'StatisticsService', ($scope, $window, $controller, UtilsService, LabelService, StatisticsService) ->
@@ -639,8 +693,7 @@ controllers.controller('LabelController', ['$scope', '$window', '$controller', '
           xAxis: {type: 'datetime'},
           yAxis: {min: 0, title: {text: "Messages"}},
           legend: {enabled: false},
-          series: [{data: chart.data}],
-          credits: {enabled: false}
+          series: [{name: "Messages", data: chart.series}],
         })
       )
 
@@ -672,6 +725,7 @@ controllers.controller('PartnerController', ['$scope', '$window', '$controller',
   $controller('BaseTabsController', {$scope: $scope})
 
   $scope.partner = $window.contextData.partner
+  $scope.fields = $window.contextData.fields
   $scope.users = []
 
   $scope.onTabInit = (tab) ->
@@ -684,7 +738,6 @@ controllers.controller('PartnerController', ['$scope', '$window', '$controller',
           yAxis: {min: 0, title: {text: "Replies"}},
           legend: {enabled: false},
           series: [{name: "Replies", data: chart.series}],
-          credits: {enabled: false}
         })
       )
     else if tab == 'users'
@@ -759,8 +812,7 @@ controllers.controller('UserController', ['$scope', '$controller', '$window', 'S
           xAxis: {categories: chart.categories},
           yAxis: {min: 0, title: {text: "Replies"}},
           legend: {enabled: false},
-          series: [{name: "Replies", data: chart.series}],
-          credits: {enabled: false}
+          series: [{name: "Replies", data: chart.series}]
         })
       )
 
@@ -809,11 +861,80 @@ controllers.controller('DateRangeController', ['$scope', ($scope) ->
 #============================================================================
 # Pod controller
 #============================================================================
-controllers.controller('PodController', ['$scope', 'PodApi', ($scope, PodApi) ->
-  $scope.init = (id, config) ->
-    $scope.podId = id
-    $scope.podConfig = config
+controllers.controller('PodController', ['$q', '$scope', 'PodApiService', ($q, $scope, PodApiService) ->
+  $scope.init = (podId, caseId, podConfig) ->
+    $scope.podId = podId
+    $scope.caseId = caseId
+    $scope.podConfig = podConfig
+    $scope.status = 'loading'
 
-    return PodApi.get($scope.podId)
+    $scope.update()
+      .then(-> $scope.status = 'idle')
+      .catch(utils.trap(PodApiService.PodApiServiceError, onLoadApiFailure, $q.reject))
+
+  $scope.update = ->
+    PodApiService.get($scope.podId, $scope.caseId)
+      .then(parsePodData)
       .then((d) -> $scope.podData = d)
+
+  $scope.trigger = (type, payload) ->
+    $scope.podData.actions = updateAction(type, {isBusy: true})
+
+    PodApiService.trigger($scope.podId, $scope.caseId, type, payload)
+      .then((res) -> onTriggerDone(type, res))
+      .catch(utils.trap(PodApiService.PodApiServiceError, onTriggerApiFailure, $q.reject))
+
+  onTriggerDone = (type, {success, payload}) ->
+    if success
+      p = onTriggerSuccess()
+    else
+      p = onTriggerFailure(payload)
+
+    $q.resolve(p)
+      .then(-> $scope.podData.actions = updateAction(type, {isBusy: false}))
+
+  onLoadApiFailure = ->
+    $scope.status = 'loading_failed'
+
+    $scope.$emit('notification', {
+      type: 'pod_load_api_failure'
+    })
+
+  onTriggerApiFailure = ->
+    $scope.$emit('notification', {
+      type: 'pod_action_api_failure'
+    })
+
+  onTriggerFailure = (payload) ->
+    $scope.$emit('notification', {
+      type: 'pod_action_failure',
+      payload
+    })
+
+  onTriggerSuccess = () ->
+    $scope.$emit('timelineChanged')
+    $scope.update()
+
+  updateAction = (type, props) ->
+    $scope.podData.actions
+      .map((d) -> if d.type == type then angular.extend({}, d, props) else d)
+
+  parsePodData = (d) ->
+    d = angular.extend({
+      items: [],
+      actions: []
+    }, d)
+
+    d.actions = d.actions
+      .map(parsePodAction)
+
+    d
+
+  parsePodAction = ({type, name, busy_text, payload}) -> {
+    type,
+    name,
+    payload,
+    busyText: busy_text ? name,
+    isBusy: false
+  }
 ])
