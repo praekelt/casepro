@@ -64,15 +64,27 @@ PODS = [{
         }, {
             'name': 'Clinic Code',
             'value': '2034 6524 6421'
-        }]
-    }
-}, {
-    'label': 'dummy_pod',
-    'title': 'Message Set Info',
-    'data': {
-        'items': [{
-            'name': 'Message Set',
-            'value': 'Pregnancy'
+        }],
+        'actions': [{
+            'type': 'opt_out',
+            'name': 'Opt out',
+            'confirm': True,
+            'busy_name': 'Opting out',
+            'payload': {
+                'delay': 1,
+                'result': (True, {'message': 'User opted out'})
+            }
+        }, {
+            'type': 'birth_message_set',
+            'name': 'Switch to birth message set',
+            'payload': {
+                'result': (
+                    False, {
+                        'message': (
+                            'The user appears to no longer be on the '
+                            'birth message set')
+                    })
+            }
         }]
     }
 }]
