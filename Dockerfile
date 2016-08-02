@@ -10,12 +10,11 @@ RUN mkdir -p /app/media
 
 RUN mkdir -p /etc/supervisor/conf.d/
 RUN mkdir -p /var/log/supervisor
-RUN rm /etc/nginx/sites-enabled/default
 
 COPY docker/docker-start.sh /scripts/
 RUN chmod a+x /scripts/docker-start.sh
 
-COPY docker/nginx.conf /etc/nginx/sites-enabled/molo.conf
+COPY docker/nginx.conf /etc/nginx/sites-enabled/django.conf
 COPY docker/supervisor.conf /etc/supervisor/conf.d/molo.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 

@@ -44,10 +44,10 @@ BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
 CELERY_RESULT_BACKEND = BROKER_URL
 CACHES = {
     'default': {
-        'BACKEND': 'redis_cache.cache.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': '%s:15' % REDIS_HOST,
         'OPTIONS': {
-            'CLIENT_CLASS': 'redis_cache.client.DefaultClient',
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
 }
@@ -95,7 +95,7 @@ PODS = [{
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
     'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
-    'token': "71c9681106461fd5bbcc8899d2d396d47862602d",
+    'token': "5c5286055b314b09394f2f648cc1409822343ed5",
     'field_mapping': [
         {"field": "mama_name", "field_name": "Mother Name"},
         {"field": "mama_surname", "field_name": "Mother Surname"},
