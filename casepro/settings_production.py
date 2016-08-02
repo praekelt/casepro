@@ -44,10 +44,10 @@ BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
 CELERY_RESULT_BACKEND = BROKER_URL
 CACHES = {
     'default': {
-        'BACKEND': 'redis_cache.cache.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': '%s:15' % REDIS_HOST,
         'OPTIONS': {
-            'CLIENT_CLASS': 'redis_cache.client.DefaultClient',
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
 }
