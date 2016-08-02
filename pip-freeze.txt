@@ -58,4 +58,4 @@ xlrd==0.9.4
 xlutils==1.7.1
 xlwt==1.0.0
 casepropods.dummy
-casepropods.family_connect_registration_pod
+casepropods.family_connect_registration
