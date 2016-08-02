@@ -52,8 +52,12 @@ CACHES = {
     }
 }
 
-INSTALLED_APPS += ('casepropods.dummy.plugin.DummyPodPlugin',)
+INSTALLED_APPS += (
+    'casepropods.dummy.plugin.DummyPodPlugin',
+    'casepropods.family_connect_registration.plugin.RegistrationPlugin',
+)
 
+# Pods
 PODS = [{
     'label': 'dummy_pod',
     'title': 'Maternal Health Info',
@@ -87,4 +91,24 @@ PODS = [{
             }
         }]
     }
+}, {
+    'label': "family_connect_registration_pod",
+    'title': "Registration Information",
+    'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
+    'token': "71c9681106461fd5bbcc8899d2d396d47862602d",
+    'field_mapping': [
+        {"field": "mama_name", "field_name": "Mother Name"},
+        {"field": "mama_surname", "field_name": "Mother Surname"},
+        {"field": "last_period_date", "field_name": "Date of last period"},
+        {"field": "language", "field_name": "Language Preference"},
+        {"field": "mama_id_type", "field_name": "ID Type"},
+        {"field": "mama_id_no", "field_name": "ID Number"},
+        {"field": "msg_receiver", "field_name": "Message Receiver"},
+        {"field": "receiver_id", "field_name": "Receiver ID"},
+        {"field": "hoh_name", "field_name": "Head of Household Name"},
+        {"field": "hoh_surname", "field_name": "Head of Household Surname"},
+        {"field": "hoh_id", "field_name": "Head of Household ID"},
+        {"field": "operator_id", "field_name": "Operator ID"},
+        {"field": "msg_type", "field_name": "Receives Messages As"},
+    ]
 }]
