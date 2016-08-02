@@ -95,7 +95,7 @@ PODS = [{
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
     'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
-    'token': "71c9681106461fd5bbcc8899d2d396d47862602d",
+    'token': "5c5286055b314b09394f2f648cc1409822343ed5",
     'field_mapping': [
         {"field": "mama_name", "field_name": "Mother Name"},
         {"field": "mama_surname", "field_name": "Mother Surname"},
