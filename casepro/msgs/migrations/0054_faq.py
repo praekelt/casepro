@@ -7,8 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orgs', '0016_taskstate_is_disabled'),
-        ('msgs', '0047_outgoing_urn'),
+        ('msgs', '0053_language'),
     ]
 
     operations = [
