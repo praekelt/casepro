@@ -57,8 +57,49 @@ modals.controller 'EditModalController', ['$scope', '$uibModalInstance', 'title'
 #=====================================================================
 # Reply to contacts modal
 #=====================================================================
-modals.controller('ReplyModalController', ['$scope', '$uibModalInstance', 'maxLength', ($scope, $uibModalInstance, maxLength) ->
+modals.controller('ReplyModalController', ['$scope', 'FaqService', 'LanguageService', '$uibModalInstance', '$controller', 'maxLength', ($scope , FaqService, LanguageService, $uibModalInstance, $controller, maxLength) ->
+
   $scope.fields = {text: {val: '', maxLength: maxLength}}
+
+  $scope.init = () ->
+    $scope.searchField = $scope.searchFieldDefaults()
+    $scope.search = $scope.buildSearch()
+    $scope.fetchFaqs()
+    $scope.fetchLanguages()
+    $scope.lang = "Select language"
+
+  $scope.buildSearch = () ->
+    search = angular.copy($scope.searchField)
+    search.label = $scope.activeLabel
+    return search
+
+  $scope.filterByLanguage = (language) ->
+    $scope.lang = language.code
+    $scope.search.language = language.id
+    FaqService.fetchFaqs($scope.search).then((results) ->
+        $scope.replies = results
+      )
+
+  $scope.fetchFaqs = (label) ->
+    if label
+      $scope.search.label = label
+      FaqService.fetchFaqs($scope.search).then((results) ->
+        $scope.replies = results
+      )
+    else
+      FaqService.fetchFaqs($scope.search).then((results) ->
+        $scope.replies = results
+      )
+
+  $scope.fetchLanguages = () ->
+    LanguageService.fetchLanguages($scope.search).then((results) ->
+      $scope.languages = results
+    )
+
+  $scope.searchFieldDefaults = () -> { text: null, language: null}
+
+  $scope.setResponse = (faq)->
+   $scope.fields.text.val = faq
 
   $scope.ok = () ->
     $scope.form.submitted = true

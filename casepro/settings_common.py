@@ -183,6 +183,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'casepro.cases.context_processors.sentry_dsn',
     'casepro.cases.context_processors.server_time',
     'casepro.profiles.context_processors.user',
+    'casepro.profiles.context_processors.user_must_reply_with_faq',
 )
 
 ROOT_URLCONF = 'casepro.urls'
@@ -320,6 +321,12 @@ PERMISSIONS = {
 
     'msgs.label': ('create', 'update', 'read', 'delete', 'list'),
 
+    'msgs.language': ('create', 'read', 'update', 'delete', 'list', 'search'),
+
+    'msgs.faq': ('create', 'read', 'update', 'delete', 'list', 'search', 'import'),
+
+    'msgs.language': ('create', 'read', 'update', 'delete', 'list'),
+
     'msgs.message': ('action', 'bulk_reply', 'forward', 'label', 'history', 'search', 'unlabelled'),
 
     'msgs.messageexport': ('create', 'read'),
@@ -350,7 +357,11 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
         'orgs.org_edit',
 
+        'csv_imports.importtask.*',
+
         'msgs.label.*',
+        'msgs.faq.*',
+        'msgs.language.*',
         'msgs.message.*',
         'msgs.messageexport.*',
         'msgs.outgoing.*',
@@ -375,6 +386,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
 
         'msgs.label_read',
+        'msgs.language_search',
+        'msgs.faq_search',
         'msgs.message_action',
         'msgs.message_bulk_reply',
         'msgs.message_forward',
