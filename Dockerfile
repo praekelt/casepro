@@ -18,7 +18,7 @@ COPY docker/nginx.conf /etc/nginx/sites-enabled/django.conf
 COPY docker/supervisor.conf /etc/supervisor/conf.d/molo.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 
-EXPOSE 80
+EXPOSE 8000
 
 CMD ["docker-start.sh"]
 

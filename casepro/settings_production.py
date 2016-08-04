@@ -52,6 +52,8 @@ CACHES = {
     }
 }
 
+ALLOWED_HOSTS = ['*']
+
 INSTALLED_APPS += (
     'casepropods.dummy.plugin.DummyPodPlugin',
     'casepropods.family_connect_registration.plugin.RegistrationPlugin',
