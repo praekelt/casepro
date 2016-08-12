@@ -7,13 +7,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cases', '0039_partner_timezone'),
+        ('cases', '0041_populate_partner_users'),
     ]
 
     operations = [
         migrations.AddField(
             model_name='partner',
-            name='description',
-            field=models.CharField(max_length=255, null=True, verbose_name='Description', blank=True),
+            name='timezone',
+            field=models.CharField(default='UTC', help_text='The timezone the partner organization is in.', max_length=64, verbose_name='Timezone'),
         ),
     ]

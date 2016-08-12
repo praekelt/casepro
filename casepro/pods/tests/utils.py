@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from casepro.pods import Pod, PodPlugin
 
 
