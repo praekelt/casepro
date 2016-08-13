@@ -158,6 +158,26 @@ class LabelCRUDL(SmartCRUDL):
 
             return JsonResponse({'results': [as_json(l) for l in labels]})
 
+    class Watch(OrgObjPermsMixin, SmartReadView):
+        """
+        Endpoint for watching a label
+        """
+        permission = 'msgs.label_read'
+
+        def post(self, request, *args, **kwargs):
+            self.get_object().watch(request.user)
+            return HttpResponse(status=204)
+
+    class Unwatch(OrgObjPermsMixin, SmartReadView):
+        """
+        Endpoint for unwatching a label
+        """
+        permission = 'msgs.label_read'
+
+        def post(self, request, *args, **kwargs):
+            self.get_object().unwatch(request.user)
+            return HttpResponse(status=204)
+
 
 class LanguageSearchMixin(object):
     def derive_search(self):
