@@ -221,7 +221,8 @@ class UserCRUDL(SmartCRUDL):
             fields = ['name', 'email']
             if self.request.org:
                 fields += ['role']
-                if self.object.profile.partner:
+                partner = self.object.get_partner(self.request.org)
+                if partner:
                     fields += ['partner']
                 fields += ['must_use_faq']
 
