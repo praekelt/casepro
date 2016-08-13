@@ -55,8 +55,8 @@ class Partner(models.Model):
         verbose_name=_("Timezone"), max_length=64, default='UTC',
         help_text=_("The timezone the partner organization is in."))
 
-    primary_contact = models.ForeignKey(User, verbose_name=_("Primary Contact"), related_name='partner_primariess', null=True,
-                                        blank=True)
+    primary_contact = models.ForeignKey(User, verbose_name=_("Primary Contact"), related_name='partner_primaries',
+                                        null=True, blank=True)
 
     is_restricted = models.BooleanField(default=True, verbose_name=_("Restricted Access"),
                                         help_text=_("Whether this partner's access is restricted by labels"))
