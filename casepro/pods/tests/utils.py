@@ -14,8 +14,8 @@ class DummyPodPlugin(PodPlugin):
     title = 'Dummy Pod'
     controller = 'DummyPodController'
     directive = 'dummy-pod'
-    scripts = ('dummy-script.coffee',)
-    styles = ('dummy-style.less',)
+    scripts = ('dummy-script.js',)
+    styles = ('dummy-style.css',)
 
 
 class SuccessActionPod(Pod):

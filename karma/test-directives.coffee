@@ -264,7 +264,7 @@ describe('directives:', () ->
   #=======================================================================
   describe('cpAlert', () ->
     beforeEach(() ->
-      $rootScope.notifications = []
+      $rootScope.alerts = []
     )
 
     it('should draw the alert', () ->
@@ -279,56 +279,59 @@ describe('directives:', () ->
   )
 
   #=======================================================================
-  # Tests for cpCaseNotifications
+  # Tests for cpAlerts
   #=======================================================================
-  describe('cpCaseNotifications', () ->
+  describe('cpAlerts', () ->
     beforeEach(() ->
-      $rootScope.notifications = []
+      $rootScope.alerts = []
     )
 
-    it('should draw pod_action_failure notifications', () ->
-      $rootScope.notifications = [{
-        type: 'pod_action_failure',
-        payload: {message: 'Foo'}
+    it('should draw alerts with no template urls', () ->
+      $rootScope.alerts = [{
+        type: 'danger',
+        message: 'Foo'
       }, {
-        type: 'pod_action_failure',
-        payload: {message: 'Bar'}
+        type: 'danger',
+        message: 'Bar'
       }]
 
       template = $compile('
-        <cp-case-notifications notifications="notifications">
-        </cp-case-notifications>
+        <cp-alerts alerts="alerts">
+        </cp-alerts>
       ')
+
       el = template($rootScope)[0]
       $rootScope.$digest()
 
-      [notification1, notification2] = el.querySelectorAll('.alert')
+      [alert1, alert2] = el.querySelectorAll('.alert')
 
-      expect(notification1.classList.contains('alert-danger')).toBe(true)
-      expect(notification1.textContent).toMatch('Foo')
+      expect(alert1.classList.contains('alert-danger')).toBe(true)
+      expect(alert1.textContent).toMatch('Foo')
 
-      expect(notification2.classList.contains('alert-danger')).toBe(true)
-      expect(notification2.textContent).toMatch('Bar')
+      expect(alert2.classList.contains('alert-danger')).toBe(true)
+      expect(alert2.textContent).toMatch('Bar')
     )
 
-    it('should draw pod_action_api_failure notifications', () ->
-      $rootScope.notifications = [{
-        type: 'pod_action_api_failure'
+    it('should draw alert with template urls', () ->
+      $rootScope.alerts = [{
+        templateUrl: '/sitestatic/karma/templates/alerts/dummy-alert.html'
+        context: {message: 'Foo'}
       }, {
-        type: 'pod_action_api_failure'
+        templateUrl: '/sitestatic/karma/templates/alerts/dummy-alert.html'
+        context: {message: 'Bar'}
       }]
 
       template = $compile('
-        <cp-case-notifications notifications="notifications">
-        </cp-case-notifications>
+        <cp-alerts alerts="alerts">
+        </cp-alerts>
       ')
+
       el = template($rootScope)[0]
       $rootScope.$digest()
 
-      [notification1, notification2] = el.querySelectorAll('.alert')
-
-      expect(notification1.classList.contains('alert-danger')).toBe(true)
-      expect(notification2.classList.contains('alert-danger')).toBe(true)
+      [alert1, alert2] = el.querySelectorAll('.alert')
+      expect(alert1.textContent).toMatch('Foo')
+      expect(alert2.textContent).toMatch('Bar')
     )
   )
 )

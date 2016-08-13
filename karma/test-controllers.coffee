@@ -143,28 +143,28 @@ describe('controllers:', () ->
       expect(CaseService.unwatch).toHaveBeenCalledWith(test.case1)
     )
 
-    it('should should add a notification on notification events', () ->
-      $scope.notifications = []
-      $scope.$emit('notification', {type: 'foo'})
-      expect($scope.notifications).toEqual([{type: 'foo'}])
+    it('should should add a alert on alert events', () ->
+      $scope.alerts = []
+      $scope.$emit('alert', {type: 'foo'})
+      expect($scope.alerts).toEqual([{type: 'foo'}])
     )
 
-    it('should should ignore duplicate pod_load_api_failure notifications', () ->
-      $scope.notifications = []
+    it('should should ignore duplicate pod_load_api_failure alerts', () ->
+      $scope.alerts = []
 
-      $scope.$emit('notification', {type: 'pod_load_api_failure'})
-      expect($scope.notifications).toEqual([{type: 'pod_load_api_failure'}])
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
 
-      $scope.$emit('notification', {type: 'pod_load_api_failure'})
-      $scope.$emit('notification', {type: 'pod_load_api_failure'})
-      expect($scope.notifications).toEqual([{type: 'pod_load_api_failure'}])
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
     )
 
-    describe('addNotification', () ->
-      it('should add the given notification', () ->
-        $scope.notifications = []
-        $scope.addNotification({type: 'foo'})
-        expect($scope.notifications).toEqual([{type: 'foo'}])
+    describe('addAlert', () ->
+      it('should add the given alert', () ->
+        $scope.alerts = []
+        $scope.addAlert({type: 'foo'})
+        expect($scope.alerts).toEqual([{type: 'foo'}])
       )
     )
   )
@@ -762,7 +762,7 @@ describe('controllers:', () ->
 
   describe('PodController', () ->
     $scope = null
-    CaseModals = null
+    PodUIService = null
     PodApiService = null
     class PodApiServiceError
 
@@ -770,7 +770,7 @@ describe('controllers:', () ->
       $controller('PodController', angular.extend({}, deps, {
         $scope,
         PodApiService,
-        CaseModals
+        PodUIService
       }))
 
     beforeEach(() ->
@@ -785,8 +785,11 @@ describe('controllers:', () ->
         actions: []
       }
 
-      CaseModals = new class CaseModals
-        confirm: -> $q.resolve()
+      PodUIService = new class PodUIService
+        confirmAction: -> $q.resolve()
+        alertActionFailure: () -> null
+        alertActionApiFailure: () -> null
+        alertLoadApiFailure: () -> null
 
       PodApiService = new class PodApiService
         PodApiServiceError: PodApiServiceError,
@@ -1025,22 +1028,27 @@ describe('controllers:', () ->
         expect($scope.podData.actions[0].isBusy).toBe(false)
       )
 
-      it('should emit a notification event if unsuccessful', (done) ->
+      it('should emit an alert event if unsuccessful', (done) ->
         bindController()
 
         spyOn(PodApiService, 'trigger').and.returnValue($q.resolve({
           success: false,
-          payload: {fred: 'xxyyxx'}
+          payload: {message: 'Foo'}
         }))
+
+        spyOn(PodUIService, 'alertActionFailure').and.returnValue('fakeResult')
 
         $scope.trigger({
           type: 'grault',
           payload: {garply: 'waldo'}
         })
 
-        $scope.$on('notification', (e, {type, payload}) ->
-          expect(type).toEqual('pod_action_failure')
-          expect(payload).toEqual({fred: 'xxyyxx'})
+        $scope.$on('alert', (e, res) ->
+          expect(res).toEqual('fakeResult')
+
+          expect(PodUIService.alertActionFailure.calls.allArgs())
+            .toEqual([['Foo']])
+
           done())
 
         $scope.$apply()
@@ -1057,37 +1065,43 @@ describe('controllers:', () ->
         $scope.$apply()
       )
 
-      it('should emit a notification if trigger api method fails', (done) ->
+      it('should emit an alert if trigger api method fails', (done) ->
         bindController()
 
         spyOn(PodApiService, 'trigger')
           .and.returnValue($q.reject(new PodApiServiceError(null)))
 
+        spyOn(PodUIService, 'alertActionApiFailure')
+          .and.returnValue('fakeResult')
+
         $scope.trigger({
           type: 'grault',
           payload: {garply: 'waldo'}
         })
 
-        $scope.$on('notification', (e, {type, payload}) ->
-          expect(type).toEqual('pod_action_api_failure')
+        $scope.$on('alert', (e, res) ->
+          expect(res).toEqual('fakeResult')
           done())
 
         $scope.$apply()
       )
 
-      it('should emit a notification if get api method fails', (done) ->
+      it('should emit an alert if get api method fails', (done) ->
         bindController()
 
         spyOn(PodApiService, 'get')
           .and.returnValue($q.reject(new PodApiServiceError(null)))
+
+        spyOn(PodUIService, 'alertActionApiFailure')
+          .and.returnValue('fakeResult')
 
         $scope.trigger({
           type: 'grault',
           payload: {garply: 'waldo'}
         })
 
-        $scope.$on('notification', (e, {type, payload}) ->
-          expect(type).toEqual('pod_action_api_failure')
+        $scope.$on('alert', (e, res) ->
+          expect(res).toEqual('fakeResult')
           done())
 
         $scope.$apply()
@@ -1134,8 +1148,7 @@ describe('controllers:', () ->
 
       it('should show a confirmation model if the action requires it', () ->
         bindController()
-
-        spyOn(CaseModals, 'confirm')
+        spyOn(PodUIService, 'confirmAction')
 
         $scope.trigger({
           type: 'grault',
@@ -1145,11 +1158,7 @@ describe('controllers:', () ->
         })
 
         $scope.$apply()
-
-        expect(CaseModals.confirm.calls.allArgs()).toEqual([[{
-          type: 'pod_action_confirm',
-          payload: {name: 'Grault'}
-        }]])
+        expect(PodUIService.confirmAction.calls.allArgs()).toEqual([['Grault']])
       )
     )
   )

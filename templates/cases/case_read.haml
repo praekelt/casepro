@@ -66,7 +66,7 @@
 
     .row
       .col-md-8
-        <cp-case-notifications notifications="notifications"></cp-case-notifications>
+        <cp-alerts alerts="alerts"></cp-alerts>
 
         %form.sendform{ ng-if:"!caseObj.is_closed" }
           // TODO maxlength not working
@@ -195,20 +195,9 @@
 - block extra-style
   {{ block.super }}
 
-  - compress css
-    %link{
-      type:"text/less",
-      rel:"stylesheet",
-      href:"{{ STATIC_URL }}less/pods.less"
-    }
-
-    - for pod_type in pod_types
-      - for style in pod_type.styles
-        %link{
-          type:"text/less",
-          rel:"stylesheet",
-          href:"{{ STATIC_URL }}{{ style }}"
-        }
+  - for pod_type in pod_types
+    - for style in pod_type.styles
+      %link{ type:"text/css", rel:"stylesheet", href:"{{ STATIC_URL }}{{ style }}" }
 
   :css
     .sendform {

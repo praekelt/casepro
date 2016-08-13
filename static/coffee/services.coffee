@@ -612,19 +612,54 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
 
 
 #=====================================================================
-# Case Modals service
+# Modals service
 #=====================================================================
-services.factory('CaseModals', ['$rootScope', '$uibModal', ($rootScope, $uibModal) ->
-  new class CaseModals
-    confirm: (ctx) ->
+services.factory('ModalService', ['$rootScope', '$uibModal', ($rootScope, $uibModal) ->
+  new class ModalService
+    confirm: ({
+      context = {},
+      title = null,
+      prompt = null,
+      templateUrl = '/sitestatic/templates/modals/confirm.html'
+    } = {}) ->
       $uibModal.open({
-        templateUrl: '/sitestatic/templates/case-confirm-modals.html',
-        scope: angular.extend($rootScope.$new(true), ctx),
+        templateUrl,
+        scope: angular.extend($rootScope.$new(true), {
+          title,
+          prompt,
+          context
+        }),
         controller: ($scope, $uibModalInstance) ->
           $scope.ok = -> $uibModalInstance.close()
           $scope.cancel = -> $uibModalInstance.dismiss()
       })
       .result
+])
+
+
+#=====================================================================
+# PodUIService service
+#=====================================================================
+services.factory('PodUIService', ['ModalService', (ModalService) ->
+  new class PodUIService
+    confirmAction: (name) ->
+      ModalService.confirm({
+        templateUrl: '/sitestatic/templates/modals/pod-action-confirm.html',
+        context: {name}
+      })
+
+    alertActionFailure: (message) -> {
+      templateUrl: '/sitestatic/templates/alerts/pod-action-failure.html',
+      context: {message}
+    }
+
+    alertActionApiFailure: () -> {
+      templateUrl: '/sitestatic/templates/alerts/pod-action-api-failure.html'
+    }
+
+    alertLoadApiFailure: () -> {
+      templateUrl: '/sitestatic/templates/alerts/pod-load-api-failure.html'
+    }
 ])
 
 
