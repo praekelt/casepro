@@ -16,6 +16,8 @@ HOSTNAME = os.environ.get('HOSTNAME', 'localhost:8000')
 
 SITE_API_HOST = os.environ.get('SITE_API_HOST', 'http://localhost:8001/')
 
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get(
@@ -58,6 +60,14 @@ INSTALLED_APPS += (
     'casepropods.dummy.plugin.DummyPodPlugin',
     'casepropods.family_connect_registration.plugin.RegistrationPlugin',
 )
+
+if SENTRY_DSN:
+    INSTALLED_APPS += (
+        'raven.contrib.django.raven_compat',
+    )
+    RAVEN_CONFIG = {
+        'dsn': SENTRY_DSN,
+    }
 
 # Pods
 PODS = [{
