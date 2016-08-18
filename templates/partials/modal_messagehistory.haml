@@ -7,7 +7,7 @@
     .message-history
       .action.stackitem{ ng-repeat:"action in actions" }
         .action-time
-          [[ action.created_on | autodate ]]
+          <cp-date-tooltip time=action.created_on position="top-right" />
 
         %span{ ng-if:'action.action == "F"' }
           Flagged

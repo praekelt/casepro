@@ -82,10 +82,7 @@
         .timeline{ ng-controller:"CaseTimelineController", ng-init:"init()" }
           .timeline-event.clearfix{ ng-repeat:"event in timeline | reverse", ng-class:'{ "timeline-action": (event.type == "A"), "timeline-incoming": (event.type == "I"), "timeline-outgoing": (event.type == "O") }' }
             .event-time
-              %span.short
-                [[ event.time | autodate ]]
-              %span.long.hide
-                [[ event.time | fulldate ]]
+              <cp-date-tooltip time=event.time position="top-right" />
 
             .{ ng-if:'event.type == "A"' }
               %span{ ng-if:'event.item.created_by.name == "System"'}
@@ -199,16 +196,6 @@
 
 - block extra-script
   {{ block.super }}
-  :javascript
-    $(function() {
-        $('.timeline').on('mouseover', '.event-time', function() {
-          $(this).children('.long').removeClass('hide');
-          $(this).children('.short').addClass('hide');
-        }).on('mouseleave', '.event-time', function() {
-          $(this).children('.short').removeClass('hide');
-          $(this).children('.long').addClass('hide');
-        });
-    });
 
   - for pod_type in pod_types
     - for script in pod_type.scripts
