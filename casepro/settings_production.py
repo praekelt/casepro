@@ -40,6 +40,13 @@ IDENTITY_AUTH_TOKEN = os.environ.get('IDENTITY_AUTH_TOKEN',
 IDENTITY_ADDRESS_TYPE = os.environ.get('IDENTITY_ADDRESS_TYPE',
                                        'msisdn')
 
+# Time until a case is re-assigned (specified in minutes)
+case_response_required_time_str = os.environ.get(
+    'SITE_CASE_RESPONSE_REQUIRED_TIME')
+
+if case_response_required_time_str:
+    SITE_CASE_RESPONSE_REQUIRED_TIME = int(case_response_required_time_str)
+
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost:6379')
 
 BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
