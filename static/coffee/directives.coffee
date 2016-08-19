@@ -82,10 +82,13 @@ directives.directive('cpPod', -> {
 # Tooltip directive
 # Shows 'displayText' with a tooltip at 'position' containing 'tooltipText'
 #=====================================================================
-directives.directive('cpDateTooltip', () ->
+directives.directive('cpDate', () ->
   return {
     restrict: 'E',
     scope: {time: '=', position: '@'},
-    templateUrl: '/sitestatic/templates/tooltip.html',
+    templateUrl: '/sitestatic/templates/date.html',
+    controller: ($scope) ->
+        if $scope.position is undefined
+            $scope.position = "top-right";
   }
 )

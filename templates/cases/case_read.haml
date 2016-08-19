@@ -82,7 +82,7 @@
         .timeline{ ng-controller:"CaseTimelineController", ng-init:"init()" }
           .timeline-event.clearfix{ ng-repeat:"event in timeline | reverse", ng-class:'{ "timeline-action": (event.type == "A"), "timeline-incoming": (event.type == "I"), "timeline-outgoing": (event.type == "O") }' }
             .event-time
-              <cp-date-tooltip time=event.time position="top-right" />
+              <cp-date time="event.time" />
 
             .{ ng-if:'event.type == "A"' }
               %span{ ng-if:'event.item.created_by.name == "System"'}
