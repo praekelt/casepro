@@ -18,9 +18,9 @@ from temba_client.utils import parse_iso8601
 from casepro.contacts.models import Field, Group
 from casepro.msgs.models import Label, Message, MessageFolder, OutgoingFolder
 from casepro.pods import registry as pod_registry
-from casepro.statistics.models import DailyCount
+from casepro.statistics.models import DailyCount, DailyMinuteTotalCount
 from casepro.utils import json_encode, datetime_to_microseconds, microseconds_to_datetime, JSONEncoder, str_to_bool
-from casepro.utils import month_range
+from casepro.utils import month_range, humanise_minutes
 from casepro.utils.export import BaseDownloadView
 
 from . import MAX_MESSAGE_CHARS
@@ -427,6 +427,8 @@ class PartnerCRUDL(SmartCRUDL):
                     partners, DailyCount.TYPE_CASE_OPENED, *month_range(0)).scope_totals()
                 cases_closed_this_month = DailyCount.get_by_partner(
                     partners, DailyCount.TYPE_CASE_CLOSED, *month_range(0)).scope_totals()
+                average = DailyMinuteTotalCount.get_by_partner(partners, DailyMinuteTotalCount.TYPE_TILL_REPLIED)
+                average = average.scope_averages()
 
             def as_json(partner):
                 obj = partner.as_json()
@@ -435,7 +437,8 @@ class PartnerCRUDL(SmartCRUDL):
                         'replies': {
                             'this_month': replies_this_month.get(partner, 0),
                             'last_month': replies_last_month.get(partner, 0),
-                            'total': replies_total.get(partner, 0)
+                            'total': replies_total.get(partner, 0),
+                            'average': humanise_minutes(average.get(partner, 0))
                         },
                         'cases': {
                             'opened_this_month': cases_opened_this_month.get(partner, 0),
