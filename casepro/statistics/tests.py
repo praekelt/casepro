@@ -280,7 +280,7 @@ class DailyCountExportTest(BaseStatsTest):
 
         export = DailyCountExport.objects.get()
         workbook = self.openWorkbook(export.filename)
-        (replies_sheet, cases_opened_sheet, cases_closed_sheet) = workbook.sheets()
+        (replies_sheet, cases_opened_sheet, cases_closed_sheet, ave_sheet) = workbook.sheets()
 
         self.assertEqual(replies_sheet.nrows, 32)
         self.assertExcelRow(replies_sheet, 0, ["Date", "MOH", "WHO"])
