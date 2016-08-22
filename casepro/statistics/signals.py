@@ -6,7 +6,6 @@ from math import ceil
 
 from casepro.cases.models import CaseAction
 from casepro.msgs.models import Message, Label, Outgoing
-from casepro.cases.models import CaseAction
 
 from .models import datetime_to_date, DailyCount, DailyMinuteTotalCount
 
