@@ -427,8 +427,12 @@ class PartnerCRUDL(SmartCRUDL):
                     partners, DailyCount.TYPE_CASE_OPENED, *month_range(0)).scope_totals()
                 cases_closed_this_month = DailyCount.get_by_partner(
                     partners, DailyCount.TYPE_CASE_CLOSED, *month_range(0)).scope_totals()
-                average = DailyMinuteTotalCount.get_by_partner(partners, DailyMinuteTotalCount.TYPE_TILL_REPLIED)
-                average = average.scope_averages()
+                average_replied = DailyMinuteTotalCount.get_by_partner(partners,
+                                                                       DailyMinuteTotalCount.TYPE_TILL_REPLIED)
+                average_replied = average_replied.scope_averages()
+                average_closed = DailyMinuteTotalCount.get_by_partner(partners,
+                                                                      DailyMinuteTotalCount.TYPE_TILL_CLOSED)
+                average_closed = average_closed.scope_averages()
 
             def as_json(partner):
                 obj = partner.as_json()
@@ -438,12 +442,13 @@ class PartnerCRUDL(SmartCRUDL):
                             'this_month': replies_this_month.get(partner, 0),
                             'last_month': replies_last_month.get(partner, 0),
                             'total': replies_total.get(partner, 0),
-                            'average': humanise_minutes(average.get(partner, 0))
+                            'average': humanise_minutes(average_replied.get(partner, 0))
                         },
                         'cases': {
                             'opened_this_month': cases_opened_this_month.get(partner, 0),
                             'closed_this_month': cases_closed_this_month.get(partner, 0),
-                            'total': cases_total.get(partner, 0)
+                            'total': cases_total.get(partner, 0),
+                            'average_closed': humanise_minutes(average_closed.get(partner, 0))
                         }
                     })
                 return obj
