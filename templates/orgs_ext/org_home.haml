@@ -74,6 +74,16 @@
               - trans "Replies last month"
             %th
               - trans "Total replies"
+            %th
+              - trans "Cases Opened this month"
+            %th
+              - trans "Cases Closed this month"
+            %th
+              - trans "Total Cases opened"
+            %th
+              - trans "Average time to reply"
+            %th
+              - trans "Average time to close"
           %tbody
             %tr{ ng-repeat:"partner in partners" }
               %td
@@ -85,6 +95,16 @@
                 [[ partner.replies.last_month ]]
               %td
                 [[ partner.replies.total ]]
+              %td
+                [[ partner.cases.opened_this_month ]]
+              %td
+                [[ partner.cases.closed_this_month ]]
+              %td
+                [[ partner.cases.total ]]
+              %td
+                [[ partner.replies.average ]]
+              %td
+                [[ partner.cases.average_closed ]]
         .none{ ng-if:"!partners" }
           - trans "None"
 
@@ -160,6 +180,12 @@
               - trans "Replies last month"
             %th
               - trans "Total replies"
+            %th
+              - trans "Cases Opened this month"
+            %th
+              - trans "Cases Closed this month"
+            %th
+              - trans "Total Cases opened"
           %tbody
             %tr{ ng-repeat:"user in users" }
               %td
@@ -171,6 +197,12 @@
                 [[ user.replies.last_month ]]
               %td
                 [[ user.replies.total ]]
+              %td
+                [[ user.cases.opened_this_month ]]
+              %td
+                [[ user.cases.closed_this_month ]]
+              %td
+                [[ user.cases.total ]]
         .none{ ng-if:"!users" }
           - trans "None"
 

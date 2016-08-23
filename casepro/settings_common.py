@@ -57,6 +57,7 @@ SITE_ORGS_STORAGE_ROOT = 'orgs'
 SITE_EXTERNAL_CONTACT_URL = 'http://localhost:8001/contact/read/%s/'
 SITE_BACKEND = 'casepro.backend.NoopBackend'
 SITE_ANON_CONTACTS = False
+SITE_CASE_RESPONSE_REQUIRED_TIME = None  # specified in minutes, None to disable
 
 # junebug configuration
 JUNEBUG_API_ROOT = 'http://localhost:8080/'
@@ -183,6 +184,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'casepro.cases.context_processors.sentry_dsn',
     'casepro.cases.context_processors.server_time',
     'casepro.profiles.context_processors.user',
+    'casepro.profiles.context_processors.user_must_reply_with_faq',
 )
 
 ROOT_URLCONF = 'casepro.urls'
@@ -320,6 +322,12 @@ PERMISSIONS = {
 
     'msgs.label': ('create', 'update', 'read', 'delete', 'list'),
 
+    'msgs.language': ('create', 'read', 'update', 'delete', 'list', 'search'),
+
+    'msgs.faq': ('create', 'read', 'update', 'delete', 'list', 'search', 'import'),
+
+    'msgs.language': ('create', 'read', 'update', 'delete', 'list'),
+
     'msgs.message': ('action', 'bulk_reply', 'forward', 'label', 'history', 'search', 'unlabelled'),
 
     'msgs.messageexport': ('create', 'read'),
@@ -350,7 +358,11 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
         'orgs.org_edit',
 
+        'csv_imports.importtask.*',
+
         'msgs.label.*',
+        'msgs.faq.*',
+        'msgs.language.*',
         'msgs.message.*',
         'msgs.messageexport.*',
         'msgs.outgoing.*',
@@ -375,6 +387,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
 
         'msgs.label_read',
+        'msgs.language_search',
+        'msgs.faq_search',
         'msgs.message_action',
         'msgs.message_bulk_reply',
         'msgs.message_forward',
@@ -493,9 +507,12 @@ CELERYBEAT_SCHEDULE = {
         'task': 'casepro.profiles.tasks.send_notifications',
         'schedule': timedelta(minutes=1),
     },
+    'reassign-case-passed-response-time': {
+        'task': 'casepro.cases.tasks.get_all_cases_passed_response_time',
+        'schedule': timedelta(minutes=60),
+    },
 }
 
 CELERY_TIMEZONE = 'UTC'
 
-# Pods
 PODS = []

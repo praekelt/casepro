@@ -10,10 +10,12 @@ from django.test.utils import override_settings
 from django.utils import timezone
 from mock import patch
 
+from casepro.msgs.models import Outgoing
 from casepro.test import BaseCasesTest
 from casepro.utils import date_to_milliseconds
+from casepro.cases.models import Case
 
-from .models import DailyCount, DailyCountExport
+from .models import DailyCount, DailyCountExport, DailyMinuteTotalCount
 from .tasks import squash_counts
 
 
@@ -169,6 +171,55 @@ class DailyCountsTest(BaseStatsTest):
         self.assertEqual(DailyCount.get_by_label([self.aids], 'I').day_totals(), [(date(2015, 1, 1), 0)])
         self.assertEqual(DailyCount.get_by_label([self.tea], 'I').day_totals(), [(date(2015, 1, 1), 0)])
 
+    def test_case_counts_opened(self):
+        d1 = self.anytime_on_day(date(2015, 1, 1), pytz.timezone("Africa/Kampala"))
+        msg2 = self.create_message(
+            self.unicef, 234, self.ann, "Hello again", [self.aids],
+            created_on=d1)
+
+        with patch.object(timezone, 'now', return_value=d1):
+            case = Case.get_or_open(
+                self.unicef, self.user1, msg2, "Summary", self.moh)
+
+        self.assertEqual(
+            DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_OPENED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+        self.assertEqual(
+            DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+            [])
+
+        self.assertEqual(
+            DailyCount.get_by_user(self.unicef, [self.user1], DailyCount.TYPE_CASE_OPENED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+        self.assertEqual(
+            DailyCount.get_by_user(self.unicef, [self.user1], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+            [])
+
+    def test_case_counts_closed(self):
+        d1 = self.anytime_on_day(date(2015, 1, 1), pytz.timezone("Africa/Kampala"))
+        msg2 = self.create_message(
+            self.unicef, 234, self.ann, "Hello again", [self.aids],
+            created_on=d1)
+
+        with patch.object(timezone, 'now', return_value=d1):
+            case = Case.get_or_open(
+                self.unicef, self.user1, msg2, "Summary", self.moh)
+            case.close(self.user1, note='closing case')
+
+        self.assertEqual(
+            DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_OPENED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+        self.assertEqual(
+            DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+
+        self.assertEqual(
+            DailyCount.get_by_user(self.unicef, [self.user1], DailyCount.TYPE_CASE_OPENED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+        self.assertEqual(
+            DailyCount.get_by_user(self.unicef, [self.user1], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+
 
 class DailyCountExportTest(BaseStatsTest):
     @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True, BROKER_BACKEND='memory')
@@ -205,8 +256,22 @@ class DailyCountExportTest(BaseStatsTest):
     def test_partner_export(self):
         url = reverse('statistics.dailycountexport_create')
 
-        self.new_outgoing(self.user1, date(2016, 1, 1), 1)  # Jan 1st
-        self.new_outgoing(self.user3, date(2016, 1, 15), 1)  # Jan 15th
+        tz = pytz.timezone("Africa/Kampala")
+        d1 = date(2016, 1, 1)
+        d2 = date(2016, 1, 15)
+
+        # Jan 1st
+        with patch.object(timezone, 'now', return_value=self.anytime_on_day(d1, tz)):
+            [msg] = self.new_messages(d1, 1)
+            Case.get_or_open(self.unicef, self.user1, msg, 'summary', self.moh)
+
+        # Jan 15th
+        with patch.object(timezone, 'now', return_value=self.anytime_on_day(d2, tz)):
+            [msg] = self.new_messages(d2, 1)
+            Case.get_or_open(self.unicef, self.user1, msg, 'summary', self.moh)
+
+        self.new_outgoing(self.user1, d1, 1)  # Jan 1st
+        self.new_outgoing(self.user3, d2, 1)  # Jan 15th
 
         self.login(self.admin)
 
@@ -215,12 +280,20 @@ class DailyCountExportTest(BaseStatsTest):
 
         export = DailyCountExport.objects.get()
         workbook = self.openWorkbook(export.filename)
-        sheet = workbook.sheets()[0]
+        (replies_sheet, cases_opened_sheet, cases_closed_sheet, ave_sheet, ave_closed_sheet) = workbook.sheets()
 
-        self.assertEqual(sheet.nrows, 32)
-        self.assertExcelRow(sheet, 0, ["Date", "MOH", "WHO"])
-        self.assertExcelRow(sheet, 1, [date(2016, 1, 1), 1, 0])
-        self.assertExcelRow(sheet, 15, [date(2016, 1, 15), 0, 1])
+        self.assertEqual(replies_sheet.nrows, 32)
+        self.assertExcelRow(replies_sheet, 0, ["Date", "MOH", "WHO"])
+        self.assertExcelRow(replies_sheet, 1, [d1, 1, 0], tz=tz)
+        self.assertExcelRow(replies_sheet, 15, [d2, 0, 1], tz=tz)
+
+        self.assertExcelRow(cases_opened_sheet, 0, ["Date", "MOH", "WHO"])
+        self.assertExcelRow(cases_opened_sheet, 1, [d1, 1, 0], tz=tz)
+        self.assertExcelRow(cases_opened_sheet, 15, [d2, 1, 0], tz=tz)
+
+        self.assertExcelRow(cases_closed_sheet, 0, ["Date", "MOH", "WHO"])
+        self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0], tz=tz)
 
 
 class ChartsTest(BaseStatsTest):
@@ -334,3 +407,71 @@ class ChartsTest(BaseStatsTest):
             self.assertEqual(series[2], {'y': 1, 'name': "Label #0"})  # labels with same count in alphabetical order
             self.assertEqual(series[8], {'y': 1, 'name': "Label #6"})
             self.assertEqual(series[9], {'y': 3, 'name': "Other"})
+
+
+class MinuteTotalCountsTest(BaseStatsTest):
+
+    def test_first_reply_counts(self):
+        msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
+        msg2 = self.create_message(self.unicef, 234, self.ned, "Hello 2", [self.aids, self.pregnancy])
+        msg3 = self.create_message(self.unicef, 345, self.ann, "Hello 3", [self.pregnancy])
+        msg4 = self.create_message(self.nyaruka, 456, self.ned, "Hello 4", [self.code])
+
+        case1 = self.create_case(self.unicef, self.ann, self.moh, msg1, [self.aids])
+        case2 = self.create_case(self.unicef, self.ned, self.moh, msg2, [self.aids, self.pregnancy])
+        case3 = self.create_case(self.unicef, self.ann, self.who, msg3, [self.pregnancy])
+        case4 = self.create_case(self.unicef, self.ned, self.who, msg4, [self.code])
+
+        self.create_outgoing(self.unicef, self.user1, 201, Outgoing.CASE_REPLY, "Good question", self.ann, case=case1)
+        self.create_outgoing(self.unicef, self.user1, 201, Outgoing.CASE_REPLY, "Good question", self.ned, case=case2)
+        self.create_outgoing(self.unicef, self.user3, 201, Outgoing.CASE_REPLY, "Good question", self.ann, case=case3)
+        self.create_outgoing(self.unicef, self.user3, 201, Outgoing.CASE_REPLY, "Good question", self.ned, case=case4)
+
+        self.assertEqual(DailyMinuteTotalCount.get_by_org([self.unicef], 'A').total(), 4)
+        self.assertEqual(DailyMinuteTotalCount.get_by_org([self.unicef], 'A').minutes(), 4)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'A').total(), 2)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'A').minutes(), 2)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'A').average(), 1)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'A').total(), 2)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'A').minutes(), 2)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'A').average(), 1)
+
+        # check empty partner metrics
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.klab], 'A').average(), 0)
+
+        self.assertEqual(DailyMinuteTotalCount.objects.count(), 8)
+        squash_counts()
+        self.assertEqual(DailyMinuteTotalCount.objects.count(), 3)
+
+    def test_case_closed_counts(self):
+        msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
+        msg2 = self.create_message(self.unicef, 234, self.ned, "Hello 2", [self.aids, self.pregnancy])
+        msg3 = self.create_message(self.unicef, 345, self.ann, "Hello 3", [self.pregnancy])
+        msg4 = self.create_message(self.nyaruka, 456, self.ned, "Hello 4", [self.code])
+
+        case1 = self.create_case(self.unicef, self.ann, self.moh, msg1, [self.aids])
+        case2 = self.create_case(self.unicef, self.ned, self.moh, msg2, [self.aids, self.pregnancy])
+        case3 = self.create_case(self.unicef, self.ann, self.who, msg3, [self.pregnancy])
+        case4 = self.create_case(self.unicef, self.ned, self.who, msg4, [self.code])
+
+        case1.close(self.user1)
+        case2.reassign(self.user1, self.who)
+        case2.close(self.user3)
+        case3.close(self.user3)
+        case4.close(self.user3)
+
+        self.assertEqual(DailyMinuteTotalCount.get_by_org([self.unicef], 'C').total(), 4)
+        self.assertEqual(DailyMinuteTotalCount.get_by_org([self.unicef], 'C').minutes(), 4)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'C').total(), 1)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'C').minutes(), 1)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.moh], 'C').average(), 1)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'C').total(), 3)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'C').minutes(), 3)
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.who], 'C').average(), 1)
+
+        # check empty partner metrics
+        self.assertEqual(DailyMinuteTotalCount.get_by_partner([self.klab], 'C').average(), 0)
+
+        self.assertEqual(DailyMinuteTotalCount.objects.count(), 8)
+        squash_counts()
+        self.assertEqual(DailyMinuteTotalCount.objects.count(), 3)

@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic import View
@@ -17,9 +18,9 @@ from temba_client.utils import parse_iso8601
 from casepro.contacts.models import Field, Group
 from casepro.msgs.models import Label, Message, MessageFolder, OutgoingFolder
 from casepro.pods import registry as pod_registry
-from casepro.statistics.models import DailyCount
+from casepro.statistics.models import DailyCount, DailyMinuteTotalCount
 from casepro.utils import json_encode, datetime_to_microseconds, microseconds_to_datetime, JSONEncoder, str_to_bool
-from casepro.utils import month_range
+from casepro.utils import month_range, humanise_minutes
 from casepro.utils.export import BaseDownloadView
 
 from . import MAX_MESSAGE_CHARS
@@ -67,8 +68,9 @@ class CaseCRUDL(SmartCRUDL):
 
             # angular app requires context data in JSON format
             context['context_data_json'] = json_encode({
-                'all_labels': [l.as_json() for l in labels],
-                'fields': [f.as_json() for f in fields]
+                'fields': [f.as_json() for f in fields],
+                'case_obj': {'id': case.id},
+                'all_labels': [l.as_json() for l in labels]
             })
 
             context['anon_contacts'] = getattr(settings, 'SITE_ANON_CONTACTS', False)
@@ -91,15 +93,19 @@ class CaseCRUDL(SmartCRUDL):
             summary = request.json['summary']
 
             assignee_id = request.json.get('assignee', None)
+            user_assignee = request.json.get('user_assignee', None)
             if assignee_id:
                 assignee = Partner.get_all(request.org).get(pk=assignee_id)
+                if user_assignee:
+                    user_assignee = get_object_or_404(assignee.get_users(), pk=user_assignee)
             else:
                 assignee = request.user.get_partner(self.request.org)
+                user_assignee = request.user
 
             message_id = int(request.json['message'])
             message = Message.objects.get(org=request.org, backend_id=message_id)
 
-            case = Case.get_or_open(request.org, request.user, message, summary, assignee)
+            case = Case.get_or_open(request.org, request.user, message, summary, assignee, user_assignee=user_assignee)
 
             # augment regular case JSON
             case_json = case.as_json()
@@ -129,8 +135,11 @@ class CaseCRUDL(SmartCRUDL):
 
         def post(self, request, *args, **kwargs):
             assignee = Partner.get_all(request.org).get(pk=request.json['assignee'])
+            user = request.json.get('user_assignee')
+            if user is not None:
+                user = get_object_or_404(assignee.get_users(), pk=user)
             case = self.get_object()
-            case.reassign(request.user, assignee)
+            case.reassign(request.user, assignee, user_assignee=user)
             return HttpResponse(status=204)
 
     class Close(OrgObjPermsMixin, SmartUpdateView):
@@ -340,7 +349,8 @@ class PartnerCRUDL(SmartCRUDL):
             restricted = data['is_restricted']
             labels = data['labels'] if restricted else []
 
-            self.object = Partner.create(org, data['name'], restricted, labels, data['logo'])
+            self.object = Partner.create(org, data['name'], data['description'], data['timezone'],
+                                         data['primary_contact'], restricted, labels, data['logo'])
 
     class Update(OrgObjPermsMixin, PartnerFormMixin, SmartUpdateView):
         form_class = PartnerForm
@@ -403,20 +413,44 @@ class PartnerCRUDL(SmartCRUDL):
         def render_as_json(self, partners, with_activity):
             if with_activity:
                 # get reply statistics
-                total = DailyCount.get_by_partner(partners, DailyCount.TYPE_REPLIES, None, None).scope_totals()
-                this_month = DailyCount.get_by_partner(partners, DailyCount.TYPE_REPLIES,
-                                                       *month_range(0)).scope_totals()
-                last_month = DailyCount.get_by_partner(partners, DailyCount.TYPE_REPLIES,
-                                                       *month_range(-1)).scope_totals()
+                replies_total = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_REPLIES, None, None).scope_totals()
+                replies_this_month = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_REPLIES, *month_range(0)).scope_totals()
+                replies_last_month = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_REPLIES, *month_range(-1)).scope_totals()
+
+                # get cases statistics
+                cases_total = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_CASE_OPENED, None, None).scope_totals()
+                cases_opened_this_month = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_CASE_OPENED, *month_range(0)).scope_totals()
+                cases_closed_this_month = DailyCount.get_by_partner(
+                    partners, DailyCount.TYPE_CASE_CLOSED, *month_range(0)).scope_totals()
+                average_replied = DailyMinuteTotalCount.get_by_partner(partners,
+                                                                       DailyMinuteTotalCount.TYPE_TILL_REPLIED)
+                average_replied = average_replied.scope_averages()
+                average_closed = DailyMinuteTotalCount.get_by_partner(partners,
+                                                                      DailyMinuteTotalCount.TYPE_TILL_CLOSED)
+                average_closed = average_closed.scope_averages()
 
             def as_json(partner):
                 obj = partner.as_json()
                 if with_activity:
-                    obj['replies'] = {
-                        'this_month': this_month.get(partner, 0),
-                        'last_month': last_month.get(partner, 0),
-                        'total': total.get(partner, 0)
-                    }
+                    obj.update({
+                        'replies': {
+                            'this_month': replies_this_month.get(partner, 0),
+                            'last_month': replies_last_month.get(partner, 0),
+                            'total': replies_total.get(partner, 0),
+                            'average': humanise_minutes(average_replied.get(partner, 0))
+                        },
+                        'cases': {
+                            'opened_this_month': cases_opened_this_month.get(partner, 0),
+                            'closed_this_month': cases_closed_this_month.get(partner, 0),
+                            'total': cases_total.get(partner, 0),
+                            'average_closed': humanise_minutes(average_closed.get(partner, 0))
+                        }
+                    })
                 return obj
 
             return JsonResponse({'results': [as_json(p) for p in partners]})

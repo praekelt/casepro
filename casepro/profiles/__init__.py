@@ -113,6 +113,16 @@ def _user_can_administer(user, org):
     return user.is_superuser or org.administrators.filter(pk=user.pk).exists()
 
 
+def _user_must_use_faq(user):
+    """
+    Whether this user must reply using a pre-approved response (FAQ)
+    """
+    if user.has_profile():
+        return user.profile.must_use_faq
+    else:
+        return False
+
+
 def _user_can_manage(user, partner):
     """
     Whether this user can manage the given partner org
@@ -181,6 +191,7 @@ User.get_partner = _user_get_partner
 User.get_role = _user_get_role
 User.update_role = _user_update_role
 User.can_administer = _user_can_administer
+User.must_use_faq = _user_must_use_faq
 User.can_manage = _user_can_manage
 User.can_edit = _user_can_edit
 User.remove_from_org = _user_remove_from_org

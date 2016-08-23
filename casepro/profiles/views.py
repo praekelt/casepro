@@ -67,9 +67,10 @@ class UserCRUDL(SmartCRUDL):
 
         def derive_fields(self):
             if self.request.org:
-                return 'name', 'role', 'partner', 'email', 'password', 'confirm_password', 'change_password'
+                return ('name', 'role', 'partner', 'email', 'password', 'confirm_password', 'change_password',
+                        'must_use_faq')
             else:
-                return 'name', 'email', 'password', 'confirm_password', 'change_password'
+                return 'name', 'email', 'password', 'confirm_password', 'change_password', 'must_use_faq'
 
         def save(self, obj):
             org = self.request.org
@@ -77,6 +78,7 @@ class UserCRUDL(SmartCRUDL):
             email = self.form.cleaned_data['email']
             password = self.form.cleaned_data['password']
             change_password = self.form.cleaned_data['change_password']
+            must_use_faq = self.form.cleaned_data['must_use_faq']
 
             if org:
                 role = self.form.cleaned_data['role']
@@ -84,11 +86,11 @@ class UserCRUDL(SmartCRUDL):
 
                 if partner:
                     self.object = Profile.create_partner_user(org, partner, role, name, email,
-                                                              password, change_password)
+                                                              password, change_password, must_use_faq)
                 else:
-                    self.object = Profile.create_org_user(org, name, email, password, change_password)
+                    self.object = Profile.create_org_user(org, name, email, password, change_password, must_use_faq)
             else:
-                self.object = Profile.create_user(name, email, password, change_password)
+                self.object = Profile.create_user(name, email, password, change_password, must_use_faq)
 
         def get_success_url(self):
             if self.request.org:
@@ -106,7 +108,7 @@ class UserCRUDL(SmartCRUDL):
         """
         permission = 'profiles.profile_user_create_in'
         form_class = PartnerUserForm
-        fields = ('name', 'role', 'email', 'password', 'confirm_password', 'change_password')
+        fields = ('name', 'role', 'email', 'password', 'confirm_password', 'change_password', 'must_use_faq')
 
         @classmethod
         def derive_url_pattern(cls, path, action):
@@ -123,8 +125,10 @@ class UserCRUDL(SmartCRUDL):
             email = self.form.cleaned_data['email']
             password = self.form.cleaned_data['password']
             change_password = self.form.cleaned_data['change_password']
+            must_use_faq = self.form.cleaned_data['must_use_faq']
 
-            self.object = Profile.create_partner_user(org, partner, role, name, email, password, change_password)
+            self.object = Profile.create_partner_user(org, partner, role, name, email, password, change_password,
+                                                      must_use_faq)
 
         def get_success_url(self):
             return reverse('cases.partner_read', args=[self.kwargs['partner_id']]) + '#/users'
@@ -156,7 +160,7 @@ class UserCRUDL(SmartCRUDL):
 
         def derive_fields(self):
             profile_fields = ['name']
-            user_fields = ['email', 'new_password', 'confirm_password', 'change_password']
+            user_fields = ['email', 'new_password', 'confirm_password', 'change_password', 'must_use_faq']
 
             if self.request.org:
                 user_partner = self.request.user.get_partner(self.request.org)
@@ -206,6 +210,23 @@ class UserCRUDL(SmartCRUDL):
 
     class Read(OrgPermsMixin, SmartReadView):
         permission = 'profiles.profile_user_read'
+
+        def derive_title(self):
+            if self.object == self.request.user:
+                return _("My Profile")
+            else:
+                return super(UserCRUDL.Read, self).derive_title()
+
+        def derive_fields(self):
+            fields = ['name', 'email']
+            if self.request.org:
+                fields += ['role']
+                partner = self.object.get_partner(self.request.org)
+                if partner:
+                    fields += ['partner']
+                fields += ['must_use_faq']
+
+            return fields
 
         def get_queryset(self):
             if self.request.org:
@@ -278,19 +299,35 @@ class UserCRUDL(SmartCRUDL):
 
             # get reply statistics
             if with_activity:
-                total = DailyCount.get_by_user(org, users, DailyCount.TYPE_REPLIES, None, None).scope_totals()
-                this_month = DailyCount.get_by_user(org, users, DailyCount.TYPE_REPLIES, *month_range(0)).scope_totals()
-                last_month = DailyCount.get_by_user(org, users, DailyCount.TYPE_REPLIES,
-                                                    *month_range(-1)).scope_totals()
+                replies_total = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_REPLIES, None, None).scope_totals()
+                replies_this_month = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_REPLIES, *month_range(0)).scope_totals()
+                replies_last_month = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_REPLIES, *month_range(-1)).scope_totals()
+
+                cases_total = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_REPLIES, None, None).scope_totals()
+                cases_opened_this_month = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_CASE_OPENED, *month_range(0)).scope_totals()
+                cases_closed_this_month = DailyCount.get_by_user(
+                    org, users, DailyCount.TYPE_CASE_CLOSED, *month_range(0)).scope_totals()
 
             def as_json(user):
                 obj = user.as_json(full=True, org=org)
                 if with_activity:
-                    obj['replies'] = {
-                        'this_month': this_month.get(user, 0),
-                        'last_month': last_month.get(user, 0),
-                        'total': total.get(user, 0)
-                    }
+                    obj.update({
+                        'replies': {
+                            'this_month': replies_this_month.get(user, 0),
+                            'last_month': replies_last_month.get(user, 0),
+                            'total': replies_total.get(user, 0)
+                        },
+                        'cases': {
+                            'opened_this_month': cases_opened_this_month.get(user, 0),
+                            'closed_this_month': cases_closed_this_month.get(user, 0),
+                            'total': cases_total.get(user, 0)
+                        },
+                    })
 
                 return obj
 

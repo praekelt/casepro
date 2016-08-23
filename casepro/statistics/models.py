@@ -32,6 +32,15 @@ class BaseCount(models.Model):
     TYPE_INBOX = 'N'
     TYPE_ARCHIVED = 'A'
     TYPE_REPLIES = 'R'
+    TYPE_CASE_OPENED = 'C'
+    TYPE_CASE_CLOSED = 'D'
+
+    squash_sql = """
+        WITH removed as (
+            DELETE FROM %(table_name)s WHERE %(delete_cond)s RETURNING "count"
+        )
+        INSERT INTO %(table_name)s(%(insert_cols)s, "count")
+        VALUES (%(insert_vals)s, GREATEST(0, (SELECT SUM("count") FROM removed)));"""
 
     item_type = models.CharField(max_length=1, help_text=_("The thing being counted"))
 
@@ -71,12 +80,7 @@ class BaseCount(models.Model):
 
         for unsquashed in unsquashed_values:
             with connection.cursor() as cursor:
-                sql = """
-                    WITH removed as (
-                        DELETE FROM %(table_name)s WHERE %(delete_cond)s RETURNING "count"
-                    )
-                    INSERT INTO %(table_name)s(%(insert_cols)s, "count")
-                    VALUES (%(insert_vals)s, GREATEST(0, (SELECT SUM("count") FROM removed)));""" % {
+                sql = cls.squash_sql % {
                     'table_name': cls._meta.db_table,
                     'delete_cond': " AND ".join(['"%s" = %%s' % f for f in cls.squash_over]),
                     'insert_cols': ", ".join(['"%s"' % f for f in cls.squash_over]),
@@ -117,6 +121,81 @@ class BaseCount(models.Model):
                 total_by_scope[scope] = total_by_encoded_scope.get(encoded_scope, 0)
 
             return total_by_scope
+
+    class Meta:
+        abstract = True
+
+
+class BaseMinuteTotal(BaseCount):
+    """
+    Tracks total minutes and counts of different items (e.g. time since assigned ) in different scopes (e.g. org, user)
+    """
+    TYPE_TILL_REPLIED = 'A'
+    TYPE_TILL_CLOSED = 'C'
+
+    squash_sql = """
+        WITH removed as (
+            DELETE FROM %(table_name)s WHERE %(delete_cond)s RETURNING "count", "minutes"
+        )
+        INSERT INTO %(table_name)s(%(insert_cols)s, "count", "minutes")
+        VALUES (
+            %(insert_vals)s,
+            GREATEST(0, (SELECT SUM("count") FROM removed)),
+            COALESCE((SELECT SUM("minutes") FROM removed), 0)
+        );"""
+
+    minutes = models.IntegerField()
+
+    class CountSet(BaseCount.CountSet):
+        """
+        A queryset of counts which can be aggregated in different ways
+        """
+        def average(self):
+            """
+            Calculates the overall total over a set of counts
+            """
+            totals = self.counts.aggregate(total=Sum('count'), minutes=Sum('minutes'))
+            if totals['minutes'] is None or totals['total'] is None:
+                return 0
+
+            average = float(totals['minutes']) / totals['total']
+            return average
+
+        def minutes(self):
+            """
+            Calculates the overall total of minutes over a set of counts
+            """
+            total = self.counts.aggregate(total_minutes=Sum('minutes'))
+            return total['total_minutes'] if total['total_minutes'] is not None else 0
+
+        def scope_averages(self):
+            """
+            Calculates per-scope averages over a set of counts
+            """
+            totals = list(self.counts.values_list('scope').annotate(cases=Sum('count'), minutes=Sum('minutes')))
+            total_by_encoded_scope = {t[0]: (t[1], t[2]) for t in totals}
+
+            average_by_scope = {}
+            for encoded_scope, scope in six.iteritems(self.scopes):
+                cases, minutes = total_by_encoded_scope.get(encoded_scope, (1, 0))
+                average_by_scope[scope] = float(minutes) / cases
+
+            return average_by_scope
+
+        def day_totals(self):
+            """
+            Calculates per-day totals over a set of counts
+            """
+            return list(self.counts.values_list('day')
+                        .annotate(cases=Sum('count'), minutes=Sum('minutes')).order_by('day'))
+
+        def month_totals(self):
+            """
+            Calculates per-month totals over a set of counts
+            """
+            counts = self.counts.extra(select={'month': 'EXTRACT(month FROM "day")'})
+            return list(counts.values_list('month')
+                        .annotate(cases=Sum('count'), minutes=Sum('minutes')).order_by('month'))
 
     class Meta:
         abstract = True
@@ -250,21 +329,93 @@ class DailyCountExport(BaseExport):
                 row += 1
 
         elif self.type == self.TYPE_PARTNER:
-            sheet = book.add_sheet(six.text_type(_("Replies Sent")))
+            replies_sheet = book.add_sheet(six.text_type(_("Replies Sent")))
+            cases_opened_sheet = book.add_sheet(six.text_type(_("Cases Opened")))
+            cases_closed_sheet = book.add_sheet(six.text_type(_("Cases Closed")))
+            ave_sheet = book.add_sheet(six.text_type(_("Average Reply Time")))
+            ave_closed_sheet = book.add_sheet(six.text_type(_("Average Closed Time")))
 
             partners = list(Partner.get_all(self.org).order_by('name'))
 
             # get each partner's day counts and organise by partner and day
-            totals_by_partner = {}
+            replies_totals_by_partner = {}
+            cases_opened_by_partner = {}
+            cases_closed_by_partner = {}
+            replied_averages_by_partner = {}
+            closed_averages_by_partner = {}
             for partner in partners:
-                totals = DailyCount.get_by_partner([partner], DailyCount.TYPE_REPLIES,
-                                                   self.since, self.until).day_totals()
-                totals_by_partner[partner] = {t[0]: t[1] for t in totals}
+                replies_totals = DailyCount.get_by_partner([partner], DailyCount.TYPE_REPLIES,
+                                                           self.since, self.until).day_totals()
+                cases_opened_totals = DailyCount.get_by_partner([partner], DailyCount.TYPE_CASE_OPENED,
+                                                                self.since, self.until).day_totals()
+                cases_closed_totals = DailyCount.get_by_partner([partner], DailyCount.TYPE_CASE_CLOSED,
+                                                                self.since, self.until).day_totals()
+                replies_totals_by_partner[partner] = {t[0]: t[1] for t in replies_totals}
+                cases_opened_by_partner[partner] = {t[0]: t[1] for t in cases_opened_totals}
+                cases_closed_by_partner[partner] = {t[0]: t[1] for t in cases_closed_totals}
+                replied_minute_totals = DailyMinuteTotalCount.get_by_partner([partner],
+                                                                             DailyMinuteTotalCount.TYPE_TILL_REPLIED,
+                                                                             self.since, self.until).day_totals()
+                replied_averages_by_partner[partner] = {t[0]: (float(t[2]) / t[1]) for t in replied_minute_totals}
+                closed_minute_totals = DailyMinuteTotalCount.get_by_partner([partner],
+                                                                            DailyMinuteTotalCount.TYPE_TILL_CLOSED,
+                                                                            self.since, self.until).day_totals()
+                closed_averages_by_partner[partner] = {t[0]: (float(t[2]) / t[1]) for t in closed_minute_totals}
 
-            self.write_row(sheet, 0, ["Date"] + [p.name for p in partners])
+            self.write_row(replies_sheet, 0, ["Date"] + [p.name for p in partners])
+            self.write_row(cases_opened_sheet, 0, ["Date"] + [p.name for p in partners])
+            self.write_row(cases_closed_sheet, 0, ["Date"] + [p.name for p in partners])
+            self.write_row(ave_sheet, 0, ["Date"] + [p.name for p in partners])
+            self.write_row(ave_closed_sheet, 0, ["Date"] + [p.name for p in partners])
 
             row = 1
             for day in date_range(self.since, self.until):
-                totals = [totals_by_partner.get(l, {}).get(day, 0) for l in partners]
-                self.write_row(sheet, row, [day] + totals)
+                replies_totals = [replies_totals_by_partner.get(l, {}).get(day, 0) for l in partners]
+                cases_opened_totals = [cases_opened_by_partner.get(l, {}).get(day, 0) for l in partners]
+                cases_closed_totals = [cases_closed_by_partner.get(l, {}).get(day, 0) for l in partners]
+                replied_averages = [replied_averages_by_partner.get(l, {}).get(day, 0) for l in partners]
+                closed_averages = [closed_averages_by_partner.get(l, {}).get(day, 0) for l in partners]
+                self.write_row(replies_sheet, row, [day] + replies_totals)
+                self.write_row(cases_opened_sheet, row, [day] + cases_opened_totals)
+                self.write_row(cases_closed_sheet, row, [day] + cases_closed_totals)
+                self.write_row(ave_sheet, row, [day] + replied_averages)
+                self.write_row(ave_closed_sheet, row, [day] + closed_averages)
                 row += 1
+
+
+class DailyMinuteTotalCount(BaseMinuteTotal):
+    """
+    Tracks total minutes and count of different items in different scopes (e.g. org, user)
+    """
+
+    day = models.DateField(help_text=_("The day this count is for"))
+
+    squash_over = ('day', 'item_type', 'scope')
+    last_squash_key = 'daily_minute_total_count:last_squash'
+
+    @classmethod
+    def record_item(cls, day, minutes, item_type, *scope_args):
+        cls.objects.create(day=day, item_type=item_type, scope=cls.encode_scope(*scope_args), count=1, minutes=minutes)
+
+    @classmethod
+    def get_by_org(cls, orgs, item_type, since=None, until=None):
+        return cls._get_count_set(item_type, {cls.encode_scope(o): o for o in orgs}, since, until)
+
+    @classmethod
+    def get_by_partner(cls, partners, item_type, since=None, until=None):
+        return cls._get_count_set(item_type, {cls.encode_scope(p): p for p in partners}, since, until)
+
+    @classmethod
+    def get_by_user(cls, org, users, item_type, since=None, until=None):
+        return cls._get_count_set(item_type, {cls.encode_scope(org, u): u for u in users}, since, until)
+
+    @classmethod
+    def _get_count_set(cls, item_type, scopes, since, until):
+        counts = cls.objects.filter(item_type=item_type)
+        if scopes:
+            counts = counts.filter(scope__in=scopes.keys())
+        if since:
+            counts = counts.filter(day__gte=since)
+        if until:
+            counts = counts.filter(day__lt=until)
+        return DailyMinuteTotalCount.CountSet(counts, scopes)

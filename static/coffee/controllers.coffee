@@ -104,7 +104,6 @@ controllers.controller('BaseTabsController', ['$scope', '$location', ($scope, $l
 # infinite scrolling, e.g. lists of messages, cases etc
 #============================================================================
 controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope, UtilsService) ->
-
   $scope.items = []
   $scope.oldItemsLoading = false
   $scope.oldItemsPage = 0
@@ -209,9 +208,8 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 # Incoming messages controller
 #============================================================================
-controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, CaseService, MessageService, PartnerService, UtilsService) ->
+controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, CaseService, MessageService, PartnerService, UserService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
-
   $scope.advancedSearch = false
   $scope.expandedMessageId = null
 
@@ -287,7 +285,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     )
 
   $scope.onReplyToSelection = () ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController',scope :$scope, resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
     .result.then((text) ->
       MessageService.bulkReply($scope.selection, text).then(() ->
         MessageService.bulkArchive($scope.selection).then(() ->
@@ -356,12 +354,15 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     }})
 
   newCaseFromMessage = (message, possibleAssignees) ->
-    UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees).then((data) ->
-      CaseService.open(message, data.summary, data.assignee).then((caseObj) ->
-          caseUrl = '/case/read/' + caseObj.id + '/'
-          if !caseObj.is_new
-            caseUrl += '?alert=open_found_existing'
-          UtilsService.navigate(caseUrl)
+    assignee = if possibleAssignees then possibleAssignees[0] else null
+    UserService.fetchInPartner(assignee, true).then((users) ->
+      UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees, users).then((data) ->
+        CaseService.open(message, data.summary, data.assignee, data.user).then((caseObj) ->
+            caseUrl = '/case/read/' + caseObj.id + '/'
+            if !caseObj.is_new
+              caseUrl += '?alert=open_found_existing'
+            UtilsService.navigate(caseUrl)
+        )
       )
     )
 ])
@@ -515,7 +516,8 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
 #============================================================================
 # Case view controller
 #============================================================================
-controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'CaseService', 'ContactService', 'MessageService', 'PartnerService', 'UtilsService', ($scope, $window, $timeout, CaseService, ContactService, MessageService, PartnerService, UtilsService) ->
+controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'CaseService', 'ContactService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $window, $timeout, CaseService, ContactService, MessageService, PartnerService, UserService, UtilsService) ->
+
   $scope.allLabels = $window.contextData.all_labels
   $scope.fields = $window.contextData.fields
 
@@ -613,9 +615,12 @@ controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'Case
 
   $scope.onReassign = () ->
     PartnerService.fetchAll().then((partners) ->
-      UtilsService.assignModal("Re-assign", null, partners).then((assignee) ->
-        CaseService.reassign($scope.caseObj, assignee).then(() ->
-          $scope.$broadcast('timelineChanged')
+      UserService.fetchInPartner(partners[0], true).then((users) ->
+        UtilsService.assignModal("Re-assign", null, partners, users).then((result) ->
+          {assignee, user} = result
+          CaseService.reassign($scope.caseObj, assignee, user).then(() ->
+            $scope.$broadcast('timelineChanged')
+          )
         )
       )
     )
@@ -826,6 +831,38 @@ controllers.controller('UserController', ['$scope', '$controller', '$window', 'S
     UtilsService.confirmModal("Delete this user?", 'danger').then(() ->
       UserService.delete($scope.user).then(() ->
         UtilsService.navigateBack()
+      )
+    )
+])
+
+
+#============================================================================
+# Language view controller
+#============================================================================
+controllers.controller('LanguageController', ['$scope', '$window', 'UtilsService', 'LanguageService', ($scope, $window, UtilsService, LanguageService) ->
+
+  $scope.language = $window.contextData.language
+
+  $scope.onDeleteLanguage = () ->
+    UtilsService.confirmModal("Delete this Language?", 'danger').then(() ->
+      LanguageService.delete($scope.language).then(() ->
+        UtilsService.navigate('/language/')
+      )
+    )
+])
+
+
+#============================================================================
+# Faq view controller
+#============================================================================
+controllers.controller('FaqController', ['$scope', '$window', 'UtilsService', 'FaqService', ($scope, $window, UtilsService, FaqService) ->
+
+  $scope.faq = $window.contextData.faq
+
+  $scope.onDeleteFaq = () ->
+    UtilsService.confirmModal("Warning! If this FAQ has any linked translation FAQs, they will be also be deleted. Delete this FAQ?", 'danger').then(() ->
+      FaqService.delete($scope.faq).then(() ->
+        UtilsService.navigate('/faq/')
       )
     )
 ])

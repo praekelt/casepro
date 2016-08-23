@@ -34,7 +34,6 @@ services.factory('ContactService', ['$http', ($http) ->
 #=====================================================================
 # Incoming message service
 #=====================================================================
-
 services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class MessageService
 
@@ -46,7 +45,6 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       if !search.before
         params.before = utils.formatIso8601(before)
       params.page = page
-
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
@@ -157,11 +155,75 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       return $http.post('/message/action/' + action + '/', params)
 ])
 
+#=====================================================================
+# FAQ service
+#=====================================================================
+services.factory('FaqService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
+  new class FaqService
+
+    #----------------------------------------------------------------------------
+    # Fetch FAQs to use in replies
+    #----------------------------------------------------------------------------
+    fetchFaqs: (search) ->
+      params = @_searchFaqsToParams(search)
+      return $http.get('/faq/search/?' + $httpParamSerializer(params)).then((response) ->
+        return response.data.results
+      )
+
+    #----------------------------------------------------------------------------
+    # Convert search object to URL params
+    #----------------------------------------------------------------------------
+    _searchFaqsToParams: (search) ->
+      return {
+        label: if search.label then search.label.id else null,
+        text: search.text,
+        language: search.language
+      }
+
+    #----------------------------------------------------------------------------
+    # Delete the given FAQ
+    #----------------------------------------------------------------------------
+    delete: (faq) ->
+      return $http.post('/faq/delete/' + faq.id + '/')
+
+])
+
 
 #=====================================================================
-# Incoming message service
+# Language service
 #=====================================================================
+services.factory('LanguageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
+  new class LanguageService
 
+    #----------------------------------------------------------------------------
+    # Fetch a list of available languages
+    #----------------------------------------------------------------------------
+    fetchLanguages: (search) ->
+      params = @_searchLanguageToParams(search)
+      return $http.get('/language/search/?' + $httpParamSerializer(params)).then((response) ->
+        return response.data.results
+      )
+
+    #----------------------------------------------------------------------------
+    # Convert search object to URL params
+    #----------------------------------------------------------------------------
+    _searchLanguageToParams: (search) ->
+      return {
+        name: search.name
+        location: search.location,
+      }
+
+    #----------------------------------------------------------------------------
+    # Delete the given language
+    #----------------------------------------------------------------------------
+    delete: (language) ->
+      return $http.post('/language/delete/' + language.id + '/')
+
+  ])
+
+#=====================================================================
+# Outgoing message service
+#=====================================================================
 services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class OutgoingService
 
@@ -215,7 +277,6 @@ services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerialize
 #=====================================================================
 # Case service
 #=====================================================================
-
 services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($http, $httpParamSerializer, $window) ->
   new class CaseService
 
@@ -251,10 +312,12 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
     #----------------------------------------------------------------------------
     # Opens a new case
     #----------------------------------------------------------------------------
-    open: (message, summary, assignee) ->
+    open: (message, summary, assignee, user) ->
       params = {message: message.id, summary: summary}
       if assignee
         params.assignee = assignee.id
+      if user
+        params.user_assignee = user.id
 
       return $http.post('/case/open/', params).then((response) ->
         return response.data
@@ -271,8 +334,12 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
     #----------------------------------------------------------------------------
     # Re-assigns a case
     #----------------------------------------------------------------------------
-    reassign: (caseObj, assignee) ->
-      return $http.post('/case/reassign/' + caseObj.id + '/', {assignee: assignee.id}).then(() ->
+    reassign: (caseObj, assignee, user) ->
+      params = {assignee: assignee.id, user_assignee: user}
+      if user
+        params.user_assignee = user.id
+
+      return $http.post('/case/reassign/' + caseObj.id + '/', params).then(() ->
         caseObj.assignee = assignee
       )
 
@@ -364,7 +431,6 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
 #=====================================================================
 # Label service
 #=====================================================================
-
 services.factory('LabelService', ['$http', '$httpParamSerializer', ($http, $httpParamSerializer) ->
   new class LabelService
 
@@ -404,7 +470,7 @@ services.factory('LabelService', ['$http', '$httpParamSerializer', ($http, $http
 #=====================================================================
 services.factory('PartnerService', ['$http', '$httpParamSerializer', ($http, $httpParamSerializer) ->
   new class PartnerService
-    
+
     #----------------------------------------------------------------------------
     # Fetches all partners, optionally with activity information
     #----------------------------------------------------------------------------
@@ -528,8 +594,8 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
       resolve = {title: (() -> title), initial: (() -> initial), maxLength: (() -> maxLength)}
       return $uibModal.open({templateUrl: '/partials/modal_compose.html', controller: 'ComposeModalController', resolve: resolve}).result
 
-    assignModal: (title, prompt, partners) ->
-      resolve = {title: (() -> title), prompt: (() -> prompt), partners: (() -> partners)}
+    assignModal: (title, prompt, partners, users) ->
+      resolve = {title: (() -> title), prompt: (() -> prompt), partners: (() -> partners), users: (() -> users) }
       return $uibModal.open({templateUrl: '/partials/modal_assign.html', controller: 'AssignModalController', resolve: resolve}).result
 
     noteModal: (title, prompt, style, maxLength) ->
@@ -540,8 +606,8 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
       resolve = {title: (() -> title), prompt: (() -> prompt), labels: (() -> labels), initial: (() -> initial)}
       return $uibModal.open({templateUrl: '/partials/modal_label.html', controller: 'LabelModalController', resolve: resolve}).result
 
-    newCaseModal: (summaryInitial, summaryMaxLength, partners) ->
-      resolve = {summaryInitial: (() -> summaryInitial), summaryMaxLength: (() -> summaryMaxLength), partners: (() -> partners)}
+    newCaseModal: (summaryInitial, summaryMaxLength, partners, users) ->
+      resolve = {summaryInitial: (() -> summaryInitial), summaryMaxLength: (() -> summaryMaxLength), partners: (() -> partners), users: (() -> users)}
       return $uibModal.open({templateUrl: '/partials/modal_newcase.html', controller: 'NewCaseModalController', resolve: resolve}).result
 
     dateRangeModal: (title, prompt) ->

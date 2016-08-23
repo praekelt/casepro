@@ -80,6 +80,14 @@ def normalize(text):
     return unicodedata.normalize('NFKD', re.sub(r'\s+', ' ', text.lower()))
 
 
+def normalize_language_code(text):
+    """
+    Converts letters 5 & 6 to uppercase.
+    """
+    normalized_code = normalize(text)
+    return normalized_code[0:4] + normalized_code[4:6].upper()
+
+
 def match_keywords(text, keywords):
     """
     Checks the given text for a keyword match
@@ -185,3 +193,19 @@ def get_language_name(iso_code):
         LANGUAGES_BY_CODE[iso_code] = lang
 
     return LANGUAGES_BY_CODE[iso_code]
+
+
+def humanise_minutes(minutes):
+    days, mins = divmod(minutes, 1440)
+    hrs, mins = divmod(mins, 60)
+    result = []
+    if days:
+        result.append("%.fd" % days)
+    if hrs:
+        result.append("%.fh" % hrs)
+    if mins:
+        result.append("%.0fm" % mins)
+    else:
+        if len(result) == 0:
+            result.append("0m")
+    return " ".join(result)

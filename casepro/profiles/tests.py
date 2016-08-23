@@ -508,7 +508,8 @@ class UserCRUDLTest(BaseCasesTest):
         response = self.url_get(None, url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.context['form'].fields.keys()), {'name', 'email', 'new_password',
-                                                                       'confirm_password', 'change_password', 'loc'})
+                                                                       'confirm_password', 'change_password',
+                                                                       'must_use_faq', 'loc'})
 
         # submit with all required fields, updating name
         response = self.url_post('unicef', url, {'name': "Richard", 'email': "rick@unicef.org",
@@ -530,7 +531,7 @@ class UserCRUDLTest(BaseCasesTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.context['form'].fields.keys()), {'name', 'email', 'role', 'partner',
                                                                        'new_password', 'confirm_password',
-                                                                       'change_password', 'loc'})
+                                                                       'change_password', 'must_use_faq', 'loc'})
 
         # submit with no fields entered
         response = self.url_post('unicef', url, {})
@@ -586,7 +587,8 @@ class UserCRUDLTest(BaseCasesTest):
         response = self.url_get('unicef', url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.context['form'].fields.keys()), {'name', 'email', 'role', 'new_password',
-                                                                       'confirm_password', 'change_password', 'loc'})
+                                                                       'confirm_password', 'change_password',
+                                                                       'must_use_faq', 'loc'})
 
         # update partner colleague
         response = self.url_post('unicef', url, {'name': "Bob", 'email': "bob@unicef.org", 'role': ROLE_MANAGER,
@@ -741,12 +743,14 @@ class UserCRUDLTest(BaseCasesTest):
             {
                 'id': self.user1.pk, 'name': "Evan", 'email': "evan@unicef.org", 'role': "M",
                 'partner': {'id': self.moh.pk, 'name': "MOH"},
-                'replies': {'last_month': 1, 'this_month': 0, 'total': 2}
+                'replies': {'last_month': 1, 'this_month': 0, 'total': 2},
+                'cases': {'opened_this_month': 0, 'closed_this_month': 0, 'total': 2}
             },
             {
                 'id': self.user2.pk, 'name': "Rick", 'email': "rick@unicef.org", 'role': "Y",
                 'partner': {'id': self.moh.pk, 'name': "MOH"},
-                'replies': {'last_month': 0, 'this_month': 0, 'total': 0}
+                'replies': {'last_month': 0, 'this_month': 0, 'total': 0},
+                'cases': {'opened_this_month': 0, 'closed_this_month': 0, 'total': 0}
             }
         ])
 
