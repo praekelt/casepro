@@ -514,6 +514,13 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
         UtilsService.displayAlert('success', "Export initiated and will be sent to your email address when complete")
       )
     )
+
+  $scope.onExportUserStats = () ->
+    UtilsService.dateRangeModal("Export", "Export user statistics between the following dates").then((data) ->
+      StatisticsService.dailyCountExport("U", data.after, data.before).then(() ->
+        UtilsService.displayAlert('success', "Export initiated and will be sent to your email address when complete")
+      )
+    )
 ])
 
 
