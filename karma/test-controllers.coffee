@@ -147,31 +147,6 @@ describe('controllers:', () ->
       expect(CaseService.unwatch).toHaveBeenCalledWith(test.case1)
     )
 
-    it('should should add a alert on alert events', () ->
-      $scope.alerts = []
-      $scope.$emit('alert', {type: 'foo'})
-      expect($scope.alerts).toEqual([{type: 'foo'}])
-    )
-
-    it('should should ignore duplicate pod_load_api_failure alerts', () ->
-      $scope.alerts = []
-
-      $scope.$emit('alert', {type: 'pod_load_api_failure'})
-      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
-
-      $scope.$emit('alert', {type: 'pod_load_api_failure'})
-      $scope.$emit('alert', {type: 'pod_load_api_failure'})
-      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
-    )
-
-    describe('addAlert', () ->
-      it('should add the given alert', () ->
-        $scope.alerts = []
-        $scope.addAlert({type: 'foo'})
-        expect($scope.alerts).toEqual([{type: 'foo'}])
-      )
-    )
-
     it('onReassign', () ->
       reassignModal = spyOnPromise($q, $scope, UtilsService, 'assignModal')
       reassignCase = spyOnPromise($q, $scope, CaseService, 'reassign')
@@ -196,6 +171,31 @@ describe('controllers:', () ->
         'Re-assign', null, [test.moh, test.who], [test.user1])
       # Result of modal selection should be sent to reassign the case
       expect(CaseService.reassign).toHaveBeenCalledWith(test.case1, test.moh, test.user1)
+    )
+
+    it('should should add a alert on alert events', () ->
+      $scope.alerts = []
+      $scope.$emit('alert', {type: 'foo'})
+      expect($scope.alerts).toEqual([{type: 'foo'}])
+    )
+
+    it('should should ignore duplicate pod_load_api_failure alerts', () ->
+      $scope.alerts = []
+
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
+
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      $scope.$emit('alert', {type: 'pod_load_api_failure'})
+      expect($scope.alerts).toEqual([{type: 'pod_load_api_failure'}])
+    )
+
+    describe('addAlert', () ->
+      it('should add the given alert', () ->
+        $scope.alerts = []
+        $scope.addAlert({type: 'foo'})
+        expect($scope.alerts).toEqual([{type: 'foo'}])
+      )
     )
   )
 

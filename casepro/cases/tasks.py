@@ -43,11 +43,11 @@ def reassign_case(case_id):
         return
 
     action = case.actions.filter(action=CaseAction.REASSIGN).latest('created_on')
-    if isinstance(action.created_by, SystemUser):
+    if isinstance(action.created_by, SystemUser) or hasattr(action.created_by, 'systemuser'):
         # The last time this case was reassigned was by the system, we should do nothing now, otherwise the
         # assignment will just keep flipping back and forth
         return
 
     system_user = SystemUser.get_or_create()
-    note = _("This case's required response time as passed and therefor has been re-assigned")
+    note = _("This case's required response time has passed and therefor has been re-assigned")
     case.reassign(system_user, case.last_assignee, note=note, user_assignee=case.last_user_assignee)
