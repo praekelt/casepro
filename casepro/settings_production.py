@@ -25,6 +25,12 @@ DATABASES = {
             'postgres://casepro:nyaruka@localhost/casepro')),
 }
 
+# SMTP Settings
+EMAIL_HOST = environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(environ.get('EMAIL_PORT', 25))
+EMAIL_HOST_USER = environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = environ.get('EMAIL_HOST_PASSWORD', '')
+
 # junebug configuration
 JUNEBUG_API_ROOT = os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/')
 JUNEBUG_CHANNEL_ID = os.environ.get('JUNEBUG_CHANNEL_ID', 'replace-me')
