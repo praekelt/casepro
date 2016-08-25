@@ -95,7 +95,11 @@ class Partner(models.Model):
         self.save(update_fields=('is_active',))
 
     def as_json(self, full=True):
-        result = {'id': self.pk, 'name': self.name}
+        result = {
+            'id': self.pk,
+            'name': self.name,
+            'org': self.org.name,
+        }
 
         if full:
             result['restricted'] = self.is_restricted

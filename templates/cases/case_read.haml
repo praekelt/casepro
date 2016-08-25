@@ -86,10 +86,10 @@
 
             .{ ng-if:'event.type == "A"' }
               %span{ ng-if:'event.item.created_by.name == "System"'}
-                [[ event.item.created_by.name ]] ([[event.item.assignee.name]])
+                [[ event.item.created_by.name ]] ([[event.item.created_by.org]])
               %span{ ng-if:'event.item.created_by.name != "System"'}
                 %a{ ng-href:"/user/read/[[ event.item.created_by.id ]]/" }
-                  [[ event.item.created_by.name ]] ([[event.item.assignee.name]])
+                  [[ event.item.created_by.name ]] ([[event.item.created_by.org]])
 
               %span{ ng-if:'event.item.action == "O"' }
                 opened this case and assigned it to
