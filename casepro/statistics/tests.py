@@ -345,7 +345,7 @@ class DailyCountExportTest(BaseStatsTest):
         d1 = date(2016, 1, 1)
         d2 = date(2016, 1, 15)
 
-        # Jan 1st, cases opened by User1 who's part of Nyaruka
+        # Jan 1st, cases opened by User4 who's part of Nyaruka
         with patch.object(timezone, 'now', return_value=self.anytime_on_day(d1, tz)):
             [msg] = self.new_messages(d1, 1)
             Case.get_or_open(self.nyaruka, self.user4, msg, 'summary', self.moh)
