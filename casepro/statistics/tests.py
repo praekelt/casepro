@@ -355,8 +355,8 @@ class DailyCountExportTest(BaseStatsTest):
             [msg] = self.new_messages(d2, 1)
             Case.get_or_open(self.nyaruka, self.user4, msg, 'summary', self.moh)
 
-        self.new_outgoing(self.user1, d1, 1)  # Jan 1st
-        self.new_outgoing(self.user3, d2, 1)  # Jan 15th
+        self.new_outgoing(self.user4, d1, 1)  # Jan 1st
+        self.new_outgoing(self.user4, d2, 1)  # Jan 15th
 
         # logging in as user1, who's a manager for UNICEF not Nyaruka
         self.login(self.user1)
@@ -368,17 +368,17 @@ class DailyCountExportTest(BaseStatsTest):
         (replies_sheet, cases_opened_sheet, cases_closed_sheet) = workbook.sheets()
 
         self.assertEqual(replies_sheet.nrows, 32)
-        self.assertExcelRow(replies_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
-        self.assertExcelRow(replies_sheet, 1, [d1, 0, 0, 0, 0], tz=tz)
-        self.assertExcelRow(replies_sheet, 15, [d2, 0, 0, 0, 0], tz=tz)
+        self.assertExcelRow(replies_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(replies_sheet, 1, [d1, 0, 0, 0], tz=tz)
+        self.assertExcelRow(replies_sheet, 15, [d2, 0, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
-        self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 0, 0, 0], tz=tz)
-        self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
-        self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0, 0, 0], tz=tz)
-        self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0, 0], tz=tz)
 
 
 class ChartsTest(BaseStatsTest):

@@ -404,6 +404,8 @@ GROUP_PERMISSIONS = {
         'profiles.profile_user_update',
         'profiles.profile_user_read',
         'profiles.profile_user_list',
+
+        'statistics.dailycountexport.*',
     ),
     "Viewers": (  # Partner users: Data Analysts
         'orgs.org_inbox',

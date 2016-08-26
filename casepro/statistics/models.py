@@ -13,6 +13,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from casepro.cases.models import Partner
 from casepro.msgs.models import Label
+from casepro.profiles.models import ROLE_ADMIN, ROLE_MANAGER
 from casepro.utils import date_range
 from casepro.utils.export import BaseExport
 
@@ -257,9 +258,9 @@ class DailyCountExport(BaseExport):
             cases_opened_sheet = book.add_sheet(six.text_type(_("Cases Opened")))
             cases_closed_sheet = book.add_sheet(six.text_type(_("Cases Closed")))
 
-            if self.created_by.can_administer(self.org):
+            if self.created_by.get_role(self.org) == ROLE_ADMIN:
                 users = self.org.get_org_users().order_by('pk')
-            elif self.created_by.can_manage(self.org):
+            elif self.created_by.get_role(self.org) == ROLE_MANAGER:
                 users = set([])
                 for partner in Partner.objects.filter(org=self.org):
                     for user in partner.get_users():
