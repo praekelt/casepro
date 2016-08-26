@@ -359,8 +359,7 @@ class DailyCountExportTest(BaseStatsTest):
         self.new_outgoing(self.user3, d2, 1)  # Jan 15th
 
         # logging in as user1, who's a manager for UNICEF not Nyaruka
-        self.login(self.user1)
-
+        self.client.login(username=self.user1.username, password=self.user1.email)
         response = self.url_post_json('unicef', url, {'type': 'U', 'after': "2016-01-01", 'before': "2016-01-31"})
         self.assertEqual(response.status_code, 200)
 
