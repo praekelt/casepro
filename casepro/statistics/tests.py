@@ -370,16 +370,16 @@ class DailyCountExportTest(BaseStatsTest):
         # Should only return rows for MOH partner users
         self.assertEqual(replies_sheet.nrows, 32)
         self.assertExcelRow(replies_sheet, 0, ['Date', 'Evan', 'Rick'])
-        self.assertExcelRow(replies_sheet, 1, [d1, 0, 0, 0], tz=tz)
-        self.assertExcelRow(replies_sheet, 15, [d2, 0, 0, 0], tz=tz)
+        self.assertExcelRow(replies_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(replies_sheet, 15, [d2, 0, 0], tz=tz)
 
         self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Evan', 'Rick'])
-        self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 0, 0], tz=tz)
-        self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 0], tz=tz)
 
         self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Evan', 'Rick'])
-        self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0, 0], tz=tz)
-        self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0, 0], tz=tz)
+        self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0], tz=tz)
 
 
 class ChartsTest(BaseStatsTest):
