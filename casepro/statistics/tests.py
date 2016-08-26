@@ -358,7 +358,7 @@ class DailyCountExportTest(BaseStatsTest):
         self.new_outgoing(self.user4, d1, 1)  # Jan 1st
         self.new_outgoing(self.user4, d2, 1)  # Jan 15th
 
-        # logging in as user1, who's a manager for UNICEF not Nyaruka
+        # logging in as user1, who's a manager for MOH UNICEF not Nyaruka
         self.login(self.user1)
         response = self.url_post_json('unicef', url, {'type': 'U', 'after': "2016-01-01", 'before': "2016-01-31"})
         self.assertEqual(response.status_code, 200)
@@ -367,16 +367,17 @@ class DailyCountExportTest(BaseStatsTest):
         workbook = self.openWorkbook(export.filename)
         (replies_sheet, cases_opened_sheet, cases_closed_sheet) = workbook.sheets()
 
+        # Should only return rows for MOH partner users
         self.assertEqual(replies_sheet.nrows, 32)
-        self.assertExcelRow(replies_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(replies_sheet, 0, ['Date', 'Evan', 'Rick'])
         self.assertExcelRow(replies_sheet, 1, [d1, 0, 0, 0], tz=tz)
         self.assertExcelRow(replies_sheet, 15, [d2, 0, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Evan', 'Rick'])
         self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 0, 0], tz=tz)
         self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Evan', 'Rick'])
         self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0, 0], tz=tz)
         self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0, 0], tz=tz)
 

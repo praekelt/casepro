@@ -262,7 +262,8 @@ class DailyCountExport(BaseExport):
                 users = self.org.get_org_users().order_by('pk')
             elif self.created_by.get_role(self.org) == ROLE_MANAGER:
                 users = set([])
-                for partner in Partner.objects.filter(org=self.org):
+                partners_for_user = Partner.objects.filter(org=self.org, users__pk=self.created_by.pk)
+                for partner in partners_for_user:
                     for user in partner.get_users():
                         users.add(user)
             else:
