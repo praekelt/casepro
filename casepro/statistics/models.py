@@ -257,7 +257,15 @@ class DailyCountExport(BaseExport):
             cases_opened_sheet = book.add_sheet(six.text_type(_("Cases Opened")))
             cases_closed_sheet = book.add_sheet(six.text_type(_("Cases Closed")))
 
-            users = self.org.get_org_users().order_by('pk')
+            if self.created_by.can_administer(self.org):
+                users = self.org.get_org_users().order_by('pk')
+            elif self.created_by.can_manage(self.org):
+                users = set([])
+                for partner in Partner.objects.filter(org=self.org):
+                    for user in partner.get_users():
+                        users.add(user)
+            else:
+                users = [user]
 
             replies_totals_by_user = {}
             cases_opened_by_user = {}
