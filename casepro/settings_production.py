@@ -15,6 +15,7 @@ TEMPLATE_DEBUG = DEBUG
 SEND_EMAILS = True
 
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost:8000')
+SITE_HOST_PATTERN = os.environ.get('SITE_HOST_PATTERN', 'http://%s.localhost:8000')
 
 SITE_API_HOST = os.environ.get('SITE_API_HOST', 'http://localhost:8001/')
 
