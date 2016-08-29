@@ -1067,7 +1067,7 @@ class SystemUserTest(BaseCasesTest):
     def test_reassign_as_system_user(self):
         # System reassigns case
         self.assertEqual(self.case.assignee, self.moh)
-        partner = Partner.create(self.unicef, "Internal", False, [])
+        partner = self.create_partner(self.unicef, "Internal", "Internal", "Africa/Kampala", None, [], False)
         sysUser = SystemUser.get_or_create()
         self.case.reassign(sysUser, partner)
 
