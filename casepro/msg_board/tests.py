@@ -48,5 +48,4 @@ class CommentTest(BaseCasesTest):
         self.login(self.admin)
         response = self.url_get('unicef', url)
 
-        print response
         self.assertContains(response, 'Foo2')
