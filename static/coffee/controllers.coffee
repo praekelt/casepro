@@ -104,6 +104,7 @@ controllers.controller('BaseTabsController', ['$scope', '$location', ($scope, $l
 # infinite scrolling, e.g. lists of messages, cases etc
 #============================================================================
 controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope, UtilsService) ->
+
   $scope.items = []
   $scope.oldItemsLoading = false
   $scope.oldItemsPage = 0
@@ -210,6 +211,7 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, CaseService, MessageService, PartnerService, UserService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
+
   $scope.advancedSearch = false
   $scope.expandedMessageId = null
 
@@ -842,22 +844,6 @@ controllers.controller('UserController', ['$scope', '$controller', '$window', 'S
     UtilsService.confirmModal("Delete this user?", 'danger').then(() ->
       UserService.delete($scope.user).then(() ->
         UtilsService.navigateBack()
-      )
-    )
-])
-
-
-#============================================================================
-# Language view controller
-#============================================================================
-controllers.controller('LanguageController', ['$scope', '$window', 'UtilsService', 'LanguageService', ($scope, $window, UtilsService, LanguageService) ->
-
-  $scope.language = $window.contextData.language
-
-  $scope.onDeleteLanguage = () ->
-    UtilsService.confirmModal("Delete this Language?", 'danger').then(() ->
-      LanguageService.delete($scope.language).then(() ->
-        UtilsService.navigate('/language/')
       )
     )
 ])

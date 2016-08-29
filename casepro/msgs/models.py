@@ -172,51 +172,6 @@ class Label(models.Model):
 
 
 @python_2_unicode_compatible
-class Language(models.Model):
-    """
-    Languages used, defined by the ISO 639-3 language code combined with the location code, e.g. eng_UK
-    """
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='languages')
-
-    code = models.CharField(max_length=6)  # e.g. eng_UK
-
-    name = models.CharField(max_length=100, null=True, blank=True)  # e.g. English
-
-    location = models.CharField(max_length=100, null=True, blank=True)  # e.g. United Kingdom
-
-    @classmethod
-    def search(cls, org, user, search):
-        """
-        Search for Languages
-        """
-        name = search.get('name')
-        location = search.get('location')
-
-        queryset = Language.objects.all()
-
-        # Name filtering
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-
-        # Location filtering
-        if location:
-            queryset = queryset.filter(location__icontains=location)
-
-        return queryset.order_by('code')
-
-    def as_json(self):
-        return {
-            'id': self.pk,
-            'code': self.code,
-            'name': self.name,
-            'location': self.location
-        }
-
-    def __str__(self):
-        return "%s" % self.code
-
-
-@python_2_unicode_compatible
 class FAQ(models.Model):
     """
     Pre-approved questions and answers to be used when replying to a message.
@@ -227,30 +182,36 @@ class FAQ(models.Model):
 
     answer = models.TextField()
 
-    language = models.ForeignKey(Language, verbose_name=('Language'), related_name='faqs', default=None)
-
-    parent = models.ForeignKey('self', null=True, blank=True, related_name='translations')
-
-    language = models.ForeignKey(Language, verbose_name=('Language'), related_name='faqs', default=None)
+    language = models.CharField(max_length=3, verbose_name=_("Language"), null=True, blank=True,
+                                help_text=_("Language for this FAQ"))
 
     parent = models.ForeignKey('self', null=True, blank=True, related_name='translations')
 
     labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this FAQ"), related_name='faqs')
 
     @classmethod
+    def create(cls, org, question, answer, language, parent, labels=(), **kwargs):
+        """
+        A helper for creating FAQs since labels (many-to-many) needs to be added after initial creation
+        """
+        faq = cls.objects.create(org=org, question=question, answer=answer, language=language, parent=parent, **kwargs)
+        faq.labels.add(*labels)
+        return faq
+
+    @classmethod
     def search(cls, org, user, search):
         """
         Search for FAQs
         """
-        language_id = search.get('language')
+        language = search.get('language')
         label_id = search.get('label')
         text = search.get('text')
 
-        queryset = FAQ.objects.all()
+        queryset = cls.objects.filter(org=org)
 
         # Language filtering
-        if language_id:
-            queryset = queryset.filter(language__pk=language_id)
+        if language:
+            queryset = queryset.filter(language=language)
 
         # Label filtering
         labels = Label.get_all(org, user)
@@ -267,24 +228,38 @@ class FAQ(models.Model):
         if text:
             queryset = queryset.filter(Q(question__icontains=text) | Q(answer__icontains=text))
 
-        queryset = queryset.prefetch_related('language', 'labels')
+        queryset = queryset.prefetch_related('labels')
 
         return queryset.order_by('question')
 
-    def as_json(self):
-        if not self.parent:
-            parent_json = None
-        else:
-            parent_json = self.parent.id
+    @classmethod
+    def get_all(cls, org, label=None):
+        queryset = cls.objects.filter(org=org)
 
-        return {
-            'id': self.pk,
-            'question': self.question,
-            'answer': self.answer,
-            'language': self.language.as_json(),
-            'parent': parent_json,
-            'labels': [l.as_json() for l in self.labels.all()]
-        }
+        if label:
+            queryset = queryset.filter(labels=label)
+
+        return queryset.distinct()
+
+    @classmethod
+    def get_all_languages(cls, org):
+        queryset = cls.objects.filter(org=org)
+        return queryset.values('language').order_by('language').distinct()
+
+    def as_json(self, full=True):
+        result = {'id': self.pk, 'question': self.question}
+        if full:
+            if not self.parent:
+                parent_json = None
+            else:
+                parent_json = self.parent.id
+
+            result['answer'] = self.answer
+            result['language'] = self.language
+            result['parent'] = parent_json
+            result['labels'] = [l.as_json() for l in self.labels.all()]
+
+        return result
 
     def __str__(self):
         return self.question
