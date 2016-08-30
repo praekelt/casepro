@@ -34,6 +34,7 @@ services.factory('ContactService', ['$http', ($http) ->
 #=====================================================================
 # Incoming message service
 #=====================================================================
+
 services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class MessageService
 
@@ -45,6 +46,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       if !search.before
         params.before = utils.formatIso8601(before)
       params.page = page
+
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
@@ -253,6 +255,7 @@ services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerialize
 #=====================================================================
 # Case service
 #=====================================================================
+
 services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($http, $httpParamSerializer, $window) ->
   new class CaseService
 
@@ -288,12 +291,14 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
     #----------------------------------------------------------------------------
     # Opens a new case
     #----------------------------------------------------------------------------
-    open: (message, summary, assignee, user) ->
-      params = {message: message.id, summary: summary}
+    open: (message, summary, assignee, user, urn) ->
+      params = {summary: summary, urn: urn}
       if assignee
         params.assignee = assignee.id
       if user
         params.user_assignee = user.id
+      if message
+        params.message = message.id
 
       return $http.post('/case/open/', params).then((response) ->
         return response.data
@@ -407,6 +412,7 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
 #=====================================================================
 # Label service
 #=====================================================================
+
 services.factory('LabelService', ['$http', '$httpParamSerializer', ($http, $httpParamSerializer) ->
   new class LabelService
 
@@ -446,7 +452,7 @@ services.factory('LabelService', ['$http', '$httpParamSerializer', ($http, $http
 #=====================================================================
 services.factory('PartnerService', ['$http', '$httpParamSerializer', ($http, $httpParamSerializer) ->
   new class PartnerService
-
+    
     #----------------------------------------------------------------------------
     # Fetches all partners, optionally with activity information
     #----------------------------------------------------------------------------
@@ -623,6 +629,55 @@ services.factory('ModalService', ['$rootScope', '$uibModal', ($rootScope, $uibMo
           $scope.cancel = -> $uibModalInstance.dismiss()
       })
       .result
+
+    create_case: ({
+      context = {},
+      title = null,
+      templateUrl = '/sitestatic/templates/modals/create_case.html',
+      initial='',
+      maxLength=255,
+      schemes = {tel: "Phone", twitter: "Twitter", email: "Email"},
+    } = {}) ->
+      $uibModal.open({
+        templateUrl,
+        scope: angular.extend($rootScope.$new(true), {
+           title, context, initial, maxLength, schemes
+        }),
+        controller: ($scope, $uibModalInstance, PartnerService, UserService) ->
+          $scope.fields = {
+            urn: {scheme: null, path: ""},
+            text: {val: initial, maxLength: maxLength},
+            partner: {val: 0, choices:[]},
+            user: {val: 0, choices: []}
+          }
+
+
+          $scope.refreshUserList = () ->
+              UserService.fetchInPartner($scope.fields.partner.val, true).then((users) ->
+                  $scope.fields.user.choices = [{name: "Anyone"}].concat(users)
+              )
+
+          $scope.setScheme = (scheme) ->
+            $scope.fields.urn.scheme = scheme
+            $scope.urn_scheme_label = schemes[scheme]
+
+          $scope.ok = () ->
+            $scope.form.submitted = true
+            if $scope.form.$valid
+              urn = $scope.fields.urn.scheme + ':' + $scope.fields.urn.path
+              $uibModalInstance.close({text: $scope.fields.text.val, urn: urn, partner: $scope.fields.partner.val, user: $scope.fields.user.val})
+
+          $scope.cancel = () -> $uibModalInstance.dismiss(false)
+
+          $scope.setScheme('tel')
+
+          PartnerService.fetchAll().then((partners) ->
+              $scope.fields.partner.choices = partners
+              $scope.fields.partner.val = partners[0]
+              $scope.refreshUserList()
+          )
+      })
+      .result
 ])
 
 
@@ -734,3 +789,23 @@ services.factory('MessageBoardService', ['$http', '$httpParamSerializer', '$wind
       return $http.post('/pinnedcomment/unpin/' + comment_id + '/')
 
 ])
+
+
+#=====================================================================
+# InboxUIService service
+#=====================================================================
+services.factory('InboxUIService', ['CaseService', 'ModalService', 'UtilsService', (CaseService, ModalService, UtilsService) ->
+  new class InboxUIService
+    createCaseWithoutMessage: () ->
+      ModalService.create_case({
+        title: "Create case"
+      }).then((result) ->
+        CaseService.open(null, result.text, result.partner, result.user, result.urn).then((caseObj) ->
+          caseUrl = 'case/read/' + caseObj.id + '/'
+          if !caseObj.is_new
+            caseUrl += '?alert=open_found_existing'
+          UtilsService.navigate(caseUrl)
+        )
+      )
+])
+
