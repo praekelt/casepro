@@ -32,8 +32,8 @@ def create_contact(org, uuid, name, groups=(), fields=None, is_stub=False):
     return contact
 
 
-def create_partner(org, name, labels=(), restricted=True):
-        return Partner.create(org, name, restricted, labels, None)
+def create_partner(org, name, description, primary_contact, labels=(), restricted=True):
+    return Partner.create(org, name, description, primary_contact, restricted, labels, None)
 
 
 def create_user(org, partner, role, name, email):
@@ -76,8 +76,8 @@ def bootstrap(username='admin', password='password'):
                                  ["pregnant", "pregnancy"])
         tea = create_label(org, None, "Tea", 'Messages about tea', ["tea", "chai"], is_synced=False)
         # some partners
-        moh = create_partner(org, "MOH", [aids, pregnancy])
-        who = create_partner(org, "WHO", [aids])
+        moh = create_partner(org, "MOH", "Ministry of Health", None, [aids, pregnancy])
+        who = create_partner(org, "WHO", "World Health Organisation", None, [aids])
         # some users in those partners
         user1 = create_user(org, moh, ROLE_MANAGER, "Evan", "e@example.com")  # noqa
         user2 = create_user(org, moh, ROLE_ANALYST, "Rick", "r@example.com")  # noqa
