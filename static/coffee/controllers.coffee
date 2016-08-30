@@ -184,7 +184,7 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
       $scope.oldItemsLoading = false
 
       if forSelectAll
-        for item in items
+        for item in $scope.items
           item.selected = true
         $scope.updateItems(false)
         if $scope.oldItemsMore and $scope.items.length < INFINITE_SCROLL_MAX_ITEMS
@@ -287,7 +287,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     )
 
   $scope.onReplyToSelection = () ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController',scope :$scope, resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> $scope.selection), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
     .result.then((text) ->
       MessageService.bulkReply($scope.selection, text).then(() ->
         MessageService.bulkArchive($scope.selection).then(() ->
@@ -321,7 +321,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     )
 
   $scope.onReplyToMessage = (message) ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> null), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
     .result.then((text) ->
       MessageService.bulkReply([message], text).then(() ->
         MessageService.bulkArchive([message]).then(() ->
@@ -499,7 +499,7 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
         $scope.labels = labels
       )
     else if tab == 'users'
-      UserService.fetchAll(true).then((users) ->
+      UserService.fetchNonPartner(true).then((users) ->
         $scope.users = users
       )
 

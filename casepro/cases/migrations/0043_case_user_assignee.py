@@ -10,13 +10,13 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('cases', '0045_case_user_assignee'),
+        ('cases', '0042_auto_20160805_1003'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='caseaction',
+            model_name='case',
             name='user_assignee',
-            field=models.ForeignKey(related_name='case_assigned_actions', on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, help_text='The (optional) user that the case was assigned to.', null=True),
+            field=models.ForeignKey(related_name='cases', on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, help_text='The (optional) user that this case is assigned to', null=True),
         ),
     ]
