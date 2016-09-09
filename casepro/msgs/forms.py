@@ -84,13 +84,21 @@ class LabelForm(forms.ModelForm):
 
 class FaqForm(forms.ModelForm):
 
-    question = forms.CharField(label=_("Question"), max_length=140)
-    answer = forms.CharField(label=_("Answer"), max_length=140)
+    question = forms.CharField(label=_("Question"), max_length=255, widget=forms.Textarea)
+    answer = forms.CharField(label=_("Answer"), max_length=480, widget=forms.Textarea)
     language = forms.CharField(label=_("Language"), max_length=3)
     # limit the parent choices to FAQs that have a ForeignKey parent that is None
     parent = forms.ModelChoiceField(queryset=FAQ.objects.filter(parent=None), required=False)
     labels = forms.ModelMultipleChoiceField(queryset=Label.objects.filter(), required=False, help_text=_(
         "If a Parent is selected, the labels will be copied from the Parent FAQ"))
+
+    def __init__(self, *args, **kwargs):
+        org = kwargs.pop('org')
+
+        super(FaqForm, self).__init__(*args, **kwargs)
+
+        self.fields['parent'].queryset = FAQ.get_all(org)
+        self.fields['labels'].queryset = Label.get_all(org)
 
     def clean_language(self):
         language = self.cleaned_data['language'].strip()

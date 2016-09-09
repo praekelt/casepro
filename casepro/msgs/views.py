@@ -19,7 +19,7 @@ from temba_client.utils import parse_iso8601
 
 from casepro.rules.mixins import RuleFormMixin
 from casepro.statistics.models import DailyCount
-from casepro.utils import parse_csv, str_to_bool, JSONEncoder, json_encode, month_range, get_language_name
+from casepro.utils import parse_csv, str_to_bool, JSONEncoder, json_encode, month_range
 from casepro.utils.export import BaseDownloadView
 
 
@@ -32,7 +32,7 @@ RESPONSE_DELAY_WARN_SECONDS = 24 * 60 * 60  # show response delays > 1 day as wa
 
 
 # Override the ImportTask start method so we can use our self-defined task
-def override_start(self, org):
+def override_start(self, org):  # pragma: no cover
     from .tasks import faq_csv_import
     self.log("Queued import at %s" % now())
     self.save(update_fields=['import_log'])
@@ -486,26 +486,18 @@ class FaqCRUDL(SmartCRUDL):
         def derive_queryset(self, **kwargs):
             return FAQ.get_all(self.request.org)
 
-        def get_context_data(self, **kwargs):
-            context = super(FaqCRUDL.List, self).get_context_data(**kwargs)
-            # change the language code to full name for display only
-            for faq in context['object_list']:
-                faq.language = get_language_name(faq.language)
-            return context
+        def lookup_field_value(self, context, obj, field):
+            value = super(FaqCRUDL.List, self).lookup_field_value(context, obj, field)
+            if field == 'language':
+                value = obj.get_language()['name']
+            return value
 
     class Create(OrgPermsMixin, SmartCreateView):
         form_class = FaqForm
 
-        def customize_form_field(self, name, field):
-            field = super(FaqCRUDL.Create, self).customize_form_field(name, field)
-            if name == 'parent':
-                field.queryset = FAQ.get_all(self.request.org)
-            if name == 'labels':
-                field.queryset = Label.get_all(self.request.org)
-            return field
-
         def get_form_kwargs(self):
             kwargs = super(FaqCRUDL.Create, self).get_form_kwargs()
+            kwargs['org'] = self.request.org
             return kwargs
 
         def save(self, obj):
@@ -517,9 +509,7 @@ class FaqCRUDL(SmartCRUDL):
             parent = data['parent']
             labels = data['labels']
 
-            faq = FAQ.objects.create(org=org, question=question, answer=answer, language=language, parent=parent)
-            faq.labels.add(*labels)
-            faq.save()
+            faq = FAQ.create(org, question, answer, language, parent, labels)
             self.object = faq
 
     class Read(OrgPermsMixin, SmartReadView):
@@ -544,13 +534,10 @@ class FaqCRUDL(SmartCRUDL):
     class Update(OrgPermsMixin, SmartUpdateView):
         form_class = FaqForm
 
-        def customize_form_field(self, name, field):
-            field = super(FaqCRUDL.Update, self).customize_form_field(name, field)
-            if name == 'parent':
-                field.queryset = FAQ.get_all(self.request.org)
-            if name == 'labels':
-                field.queryset = Label.get_all(self.request.org)
-            return field
+        def get_form_kwargs(self):
+            kwargs = super(FaqCRUDL.Update, self).get_form_kwargs()
+            kwargs['org'] = self.request.org
+            return kwargs
 
         def derive_initial(self):
             initial = super(FaqCRUDL.Update, self).derive_initial()
@@ -575,20 +562,15 @@ class FaqCRUDL(SmartCRUDL):
 
             org = self.request.org
             user = self.request.user
-            page = int(self.request.GET.get('page', 1))
 
             search = self.derive_search()
             faqs = FAQ.search(org, user, search)
-            paginator = LazyPaginator(faqs, per_page=50)
-
-            context['object_list'] = paginator.page(page)
-            context['has_more'] = paginator.num_pages > page
+            context['object_list'] = faqs
             return context
 
         def render_to_response(self, context, **response_kwargs):
             return JsonResponse({
                 'results': [m.as_json() for m in context['object_list']],
-                'has_more': context['has_more']
             }, encoder=JSONEncoder)
 
     class Import(OrgPermsMixin, SmartCSVImportView):
@@ -612,23 +594,14 @@ class FaqCRUDL(SmartCRUDL):
             context = super(FaqCRUDL.Languages, self).get_context_data(**kwargs)
 
             org = self.request.org
-            page = int(self.request.GET.get('page', 1))
-
             langs = FAQ.get_all_languages(org)
-            paginator = LazyPaginator(langs, per_page=50)
-
             lang_list = []
-            for lang in paginator.page(page):
-                lang_list.append({
-                    'code': lang['language'],
-                    'name': get_language_name(lang['language'])
-                })
+            for lang in langs:
+                lang_list.append(FAQ.get_language_from_code(lang['language']))
             context['language_list'] = lang_list
-            context['has_more'] = paginator.num_pages > page
             return context
 
         def render_to_response(self, context, **response_kwargs):
             return JsonResponse({
                 'results': context['language_list'],
-                'has_more': context['has_more']
             }, encoder=JSONEncoder)
