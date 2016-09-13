@@ -730,6 +730,36 @@ describe('controllers:', () ->
   )
 
   #=======================================================================
+  # Tests for LabelController
+  #=======================================================================
+  describe('LabelController', () ->
+    LabelService = null
+    $scope = null
+
+    beforeEach(inject((_LabelService_) ->
+      LabelService = _LabelService_
+
+      $scope = $rootScope.$new()
+      $window.contextData = {label: test.tea}
+      $controller('LabelController', {$scope: $scope})
+    ))
+
+    it('onDeleteLabel', () ->
+      confirmModal = spyOnPromise($q, $scope, UtilsService, 'confirmModal')
+      deleteLabel = spyOnPromise($q, $scope, LabelService, 'delete')
+      spyOn(UtilsService, 'navigate')
+
+      $scope.onDeleteLabel()
+
+      confirmModal.resolve()
+      deleteLabel.resolve()
+
+      expect(LabelService.delete).toHaveBeenCalledWith(test.tea)
+      expect(UtilsService.navigate).toHaveBeenCalledWith('/org/home/#/labels')
+    )
+  )
+
+  #=======================================================================
   # Tests for PartnerController
   #=======================================================================
   describe('PartnerController', () ->
@@ -792,7 +822,7 @@ describe('controllers:', () ->
       deletePartner.resolve()
 
       expect(PartnerService.delete).toHaveBeenCalledWith(test.moh)
-      expect(UtilsService.navigate).toHaveBeenCalledWith('/partner/')
+      expect(UtilsService.navigate).toHaveBeenCalledWith('/org/home/#/partners')
     )
   )
 
@@ -1245,8 +1275,8 @@ describe('controllers:', () ->
         $controller('MessageBoardController', {$scope: $scope})
 
         # extra test data
-        test.comment1 = {comment_id: 101, comment: "Hello 1", user_name: "Joe", user_id: 201, submit_date: utcdate(2016, 8, 1, 10, 0)}
-        test.comment2 = {comment_id: 102, comment: "Hello 2", user_name: "Sam", user_id: 202, submit_date: utcdate(2016, 8, 1, 11, 0)}
+        test.comment1 = {id: 101, comment: "Hello 1", user: {id: 201, name: "Joe"}, submitted_on: utcdate(2016, 8, 1, 10, 0), pinned_on: null}
+        test.comment2 = {id: 102, comment: "Hello 2", user: {id: 202, name: "Sam"}, submitted_on: utcdate(2016, 8, 1, 11, 0), pinned_on: null}
       )
 
       it('should initialize correctly', () ->
@@ -1259,7 +1289,7 @@ describe('controllers:', () ->
         fetchPinnedComments.resolve({results: [test.comment2]})
 
         expect($scope.comments).toEqual([test.comment1, test.comment2])
-        expect($scope.pinned_comments).toEqual([test.comment2])
+        expect($scope.pinnedComments).toEqual([test.comment2])
       )
 
       it('should pin comments', () ->
@@ -1268,13 +1298,13 @@ describe('controllers:', () ->
         fetchComments = spyOnPromise($q, $scope, MessageBoardService, 'fetchComments')
         fetchPinnedComments = spyOnPromise($q, $scope, MessageBoardService, 'fetchPinnedComments')
 
-        $scope.onPin(101)
+        $scope.onPin(test.comment1)
         pinComment.resolve()
 
         fetchComments.resolve({results: [test.comment1, test.comment2]})
         fetchPinnedComments.resolve({results: [test.comment1]})
 
-        expect(MessageBoardService.pinComment).toHaveBeenCalledWith(101)
+        expect(MessageBoardService.pinComment).toHaveBeenCalledWith(test.comment1)
       )
 
       it('should unpin comments', () ->
@@ -1283,13 +1313,13 @@ describe('controllers:', () ->
         fetchComments = spyOnPromise($q, $scope, MessageBoardService, 'fetchComments')
         fetchPinnedComments = spyOnPromise($q, $scope, MessageBoardService, 'fetchPinnedComments')
 
-        $scope.onUnpin(101)
+        $scope.onUnpin(test.comment1)
         unpinComment.resolve()
 
         fetchComments.resolve({results: [test.comment1, test.comment2]})
         fetchPinnedComments.resolve({results: []})
 
-        expect(MessageBoardService.unpinComment).toHaveBeenCalledWith(101)
+        expect(MessageBoardService.unpinComment).toHaveBeenCalledWith(test.comment1)
       )
     )
   )

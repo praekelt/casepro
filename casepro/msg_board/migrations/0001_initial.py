@@ -2,26 +2,43 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.db.models.deletion
 from django.conf import settings
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orgs', '0016_taskstate_is_disabled'),
+        ('contenttypes', '0002_remove_content_type_name'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('django_comments', '0003_add_submit_date_index'),
+        ('sites', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PinnedComment',
+            name='MessageBoardComment',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('pinned_date', models.DateTimeField(auto_now=True)),
-                ('comment', models.ForeignKey(to='django_comments.Comment')),
-                ('org', models.ForeignKey(related_name='pinned_comments', verbose_name='Organization', to='orgs.Org')),
-                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('object_pk', models.TextField(verbose_name='object ID')),
+                ('user_name', models.CharField(max_length=50, verbose_name="user's name", blank=True)),
+                ('user_email', models.EmailField(max_length=254, verbose_name="user's email address", blank=True)),
+                ('user_url', models.URLField(verbose_name="user's URL", blank=True)),
+                ('comment', models.TextField(max_length=3000, verbose_name='comment')),
+                ('submit_date', models.DateTimeField(default=None, verbose_name='date/time submitted', db_index=True)),
+                ('ip_address', models.GenericIPAddressField(unpack_ipv4=True, null=True, verbose_name='IP address', blank=True)),
+                ('is_public', models.BooleanField(default=True, help_text='Uncheck this box to make the comment effectively disappear from the site.', verbose_name='is public')),
+                ('is_removed', models.BooleanField(default=False, help_text='Check this box if the comment is inappropriate. A "This comment has been removed" message will be displayed instead.', verbose_name='is removed')),
+                ('pinned_on', models.DateTimeField(null=True, blank=True)),
+                ('content_type', models.ForeignKey(related_name='content_type_set_for_messageboardcomment', verbose_name='content type', to='contenttypes.ContentType')),
+                ('site', models.ForeignKey(to='sites.Site')),
+                ('user', models.ForeignKey(related_name='messageboardcomment_comments', on_delete=django.db.models.deletion.SET_NULL, verbose_name='user', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
             ],
+            options={
+                'ordering': ('submit_date',),
+                'abstract': False,
+                'verbose_name': 'comment',
+                'verbose_name_plural': 'comments',
+                'permissions': [('can_moderate', 'Can moderate comments')],
+            },
         ),
     ]
