@@ -414,7 +414,7 @@ controllers.controller('OutgoingController', ['$scope', '$controller', 'Outgoing
 #============================================================================
 # Cases listing controller
 #============================================================================
-controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 'CaseService', 'UtilsService', ($scope, $timeout, $controller, CaseService, UtilsService) ->
+controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 'CaseService', 'PartnerService', 'UtilsService', ($scope, $timeout, $controller, CaseService, PartnerService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
 
   $scope.init = () ->
@@ -423,6 +423,10 @@ controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 
 
     $scope.$on('activeLabelChange', () ->
       $scope.onResetSearch()
+    )
+
+    PartnerService.fetchAll().then((partners) ->
+      $scope.partners = partners
     )
 
   $scope.getItemFilter = () ->
@@ -737,7 +741,7 @@ controllers.controller('LabelController', ['$scope', '$window', '$controller', '
   $scope.onDeleteLabel = () ->
     UtilsService.confirmModal("Delete this label?", 'danger').then(() ->
       LabelService.delete($scope.label).then(() ->
-        UtilsService.navigate('/label/')
+        UtilsService.navigate('/org/home/#/labels')
       )
     )
 ])
@@ -775,7 +779,7 @@ controllers.controller('PartnerController', ['$scope', '$window', '$controller',
   $scope.onDeletePartner = () ->
     UtilsService.confirmModal("Remove this partner organization?", 'danger').then(() ->
       PartnerService.delete($scope.partner).then(() ->
-        UtilsService.navigate('/partner/')
+        UtilsService.navigate('/org/home/#/partners')
       )
     )
 ])
@@ -982,24 +986,24 @@ controllers.controller('PodController', ['$q', '$scope', 'PodApiService', 'PodUI
 controllers.controller('MessageBoardController', ['$scope', '$timeout', 'MessageBoardService', 'UtilsService', ($scope, $timeout, MessageBoardService, UtilsService) ->
 
   $scope.comments = []
-  $scope.pinned_comments = []
+  $scope.pinnedComments = []
 
   $scope.init = () ->
-    MessageBoardService.fetchComments({id: $scope.orgId}).then((data) ->
+    MessageBoardService.fetchComments().then((data) ->
       $scope.comments = data.results
     )
 
-    MessageBoardService.fetchPinnedComments({id: $scope.orgId}).then((data) ->
-      $scope.pinned_comments = data.results
+    MessageBoardService.fetchPinnedComments().then((data) ->
+      $scope.pinnedComments = data.results
     )
 
-  $scope.onPin = (comment_id) ->
-    MessageBoardService.pinComment(comment_id).then(() ->
+  $scope.onPin = (comment) ->
+    MessageBoardService.pinComment(comment).then(() ->
       $scope.init()
     )
 
-  $scope.onUnpin = (comment_id) ->
-    MessageBoardService.unpinComment(comment_id).then(() ->
+  $scope.onUnpin = (comment) ->
+    MessageBoardService.unpinComment(comment).then(() ->
       $scope.init()
     )
 ])

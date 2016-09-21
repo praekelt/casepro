@@ -7,7 +7,7 @@ from math import ceil
 from casepro.cases.models import CaseAction
 from casepro.msgs.models import Message, Label, Outgoing
 
-from .models import datetime_to_date, DailyCount, DailyMinuteTotalCount
+from .models import datetime_to_date, DailyCount, DailySecondTotalCount
 
 
 @receiver(post_save, sender=Message)
@@ -45,9 +45,9 @@ def record_new_outgoing(sender, instance, created, **kwargs):
             # count the very first response on an org level
             if instance == case.outgoing_messages.earliest('created_on'):
                 td = instance.created_on - case.opened_on
-                minutes_since_open = ceil(td.total_seconds() / 60)
-                DailyMinuteTotalCount.record_item(day, minutes_since_open,
-                                                  DailyMinuteTotalCount.TYPE_TILL_REPLIED, org)
+                seconds_since_open = ceil(td.total_seconds())
+                DailySecondTotalCount.record_item(day, seconds_since_open,
+                                                  DailySecondTotalCount.TYPE_TILL_REPLIED, org)
 
             if case.assignee == partner:
                 # count the first response by this partner
@@ -60,9 +60,9 @@ def record_new_outgoing(sender, instance, created, **kwargs):
                         start_date = case.opened_on
 
                     td = instance.created_on - start_date
-                    minutes_since_open = ceil(td.total_seconds() / 60)
-                    DailyMinuteTotalCount.record_item(day, minutes_since_open,
-                                                      DailyMinuteTotalCount.TYPE_TILL_REPLIED, partner)
+                    seconds_since_open = ceil(td.total_seconds())
+                    DailySecondTotalCount.record_item(day, seconds_since_open,
+                                                      DailySecondTotalCount.TYPE_TILL_REPLIED, partner)
 
 
 @receiver(m2m_changed, sender=Message.labels.through)
@@ -94,14 +94,18 @@ def record_new_case_action(sender, instance, created, **kwargs):
         DailyCount.record_item(day, DailyCount.TYPE_CASE_OPENED, partner)
 
     elif instance.action == CaseAction.CLOSE:
+        if case.actions.filter(action=CaseAction.REOPEN).exists():
+            # dont count any stats for reopened cases.
+            return
+
         DailyCount.record_item(day, DailyCount.TYPE_CASE_CLOSED, org, user)
         DailyCount.record_item(day, DailyCount.TYPE_CASE_CLOSED, partner)
 
         # count the time to close on an org level
         td = instance.created_on - case.opened_on
-        minutes_since_open = ceil(td.total_seconds() / 60)
-        DailyMinuteTotalCount.record_item(day, minutes_since_open,
-                                          DailyMinuteTotalCount.TYPE_TILL_CLOSED, org)
+        seconds_since_open = ceil(td.total_seconds())
+        DailySecondTotalCount.record_item(day, seconds_since_open,
+                                          DailySecondTotalCount.TYPE_TILL_CLOSED, org)
 
         if case.assignee == partner:
             # count the time since case was last assigned to this partner till it was closed
@@ -114,6 +118,6 @@ def record_new_case_action(sender, instance, created, **kwargs):
                     start_date = case.opened_on
 
                 td = instance.created_on - start_date
-                minutes_since_open = ceil(td.total_seconds() / 60)
-                DailyMinuteTotalCount.record_item(day, minutes_since_open,
-                                                  DailyMinuteTotalCount.TYPE_TILL_CLOSED, partner)
+                seconds_since_open = ceil(td.total_seconds())
+                DailySecondTotalCount.record_item(day, seconds_since_open,
+                                                  DailySecondTotalCount.TYPE_TILL_CLOSED, partner)
