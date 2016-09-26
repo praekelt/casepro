@@ -316,9 +316,16 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
   #----------------------------------------------------------------------------
 
   $scope.onToggleMessageFlag = (message) ->
-    MessageService.bulkFlag([message], !message.flagged).then(() ->
-      $scope.updateItems()
-    )
+    if $scope.folder == 'flagged'
+      UtilsService.confirmModal('Are you sure you want to un-flag this message?').then(() ->
+         MessageService.bulkFlag([message], !message.flagged).then(() ->
+          $scope.updateItems()
+        )
+      )
+    else
+      MessageService.bulkFlag([message], !message.flagged).then(() ->
+        $scope.updateItems()
+      )
 
   $scope.onReplyToMessage = (message) ->
     $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> null), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
