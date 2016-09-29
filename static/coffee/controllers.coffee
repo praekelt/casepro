@@ -316,9 +316,16 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
   #----------------------------------------------------------------------------
 
   $scope.onToggleMessageFlag = (message) ->
-    MessageService.bulkFlag([message], !message.flagged).then(() ->
-      $scope.updateItems()
-    )
+    if $scope.folder == 'flagged'
+      UtilsService.confirmModal('Are you sure you want to un-flag this message?').then(() ->
+         MessageService.bulkFlag([message], !message.flagged).then(() ->
+          $scope.updateItems()
+        )
+      )
+    else
+      MessageService.bulkFlag([message], !message.flagged).then(() ->
+        $scope.updateItems()
+      )
 
   $scope.onReplyToMessage = (message) ->
     $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> null), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
@@ -414,7 +421,7 @@ controllers.controller('OutgoingController', ['$scope', '$controller', 'Outgoing
 #============================================================================
 # Cases listing controller
 #============================================================================
-controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 'CaseService', 'UtilsService', ($scope, $timeout, $controller, CaseService, UtilsService) ->
+controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 'CaseService', 'PartnerService', 'UtilsService', ($scope, $timeout, $controller, CaseService, PartnerService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
 
   $scope.init = () ->
@@ -423,6 +430,10 @@ controllers.controller('CasesController', ['$scope', '$timeout', '$controller', 
 
     $scope.$on('activeLabelChange', () ->
       $scope.onResetSearch()
+    )
+
+    PartnerService.fetchAll().then((partners) ->
+      $scope.partners = partners
     )
 
   $scope.getItemFilter = () ->
@@ -503,6 +514,16 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
       )
     else if tab == 'users'
       UserService.fetchNonPartner(true).then((users) ->
+        $scope.users = users
+      )
+
+  $scope.onSelectAllUsers = () ->
+    UserService.fetchAll(true).then((users) ->
+        $scope.users = users
+      )
+
+  $scope.onSelectOrgOnlyUsers = () ->
+    UserService.fetchNonPartner(true).then((users) ->
         $scope.users = users
       )
 
