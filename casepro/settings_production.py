@@ -75,6 +75,7 @@ ALLOWED_HOSTS = ['*']
 INSTALLED_APPS += (
     'casepropods.dummy.plugin.DummyPodPlugin',
     'casepropods.family_connect_registration.plugin.RegistrationPlugin',
+    'casepropods.family_connect_subscription.plugin.SubscriptionPlugin',
 )
 
 if SENTRY_DSN:
@@ -139,4 +140,9 @@ PODS = [{
         {"field": "operator_id", "field_name": "Operator ID"},
         {"field": "msg_type", "field_name": "Receives Messages As"},
     ]
+}, {
+    'label': "family_connect_subscription_pod",
+    'title': "Subscription Information",
+    'url': "http://stage-based-messaging.familyconnect.seed.p16n.org/api/v1/",
+    'token': "a6734782aeea2abf9a3ccb4e7a7077491966b115",
 }]
