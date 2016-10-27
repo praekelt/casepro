@@ -6,7 +6,7 @@
     <form name="form" novalidate>
         <div class="form-group" ng-class='{"has-error": form.path.$invalid && (form.path.$dirty || form.submitted)}'>
             <label class="control-label">
-                Recipient
+                Contact
             </label>
             <div class="input-group">
                 <div class="input-group-btn">
@@ -29,29 +29,34 @@
                 Invalid phone number format. Should be in the format +27741234567
             </div>
         </div>
-        <div class="form-group" ng-class='{"has-error": form.text.$invalid}'>
+        <div class="form-group" ng-class='{"has-error": form.text.$invalid && form.submitted}'>
             <label class="control-label">
                 Summary
             </label>
             <textarea class="form-control" ng-model="fields.text.val" ng-maxlength="fields.text.maxLength" name="text" required></textarea>
-            <div class="help-block" ng-show="form.text.$error.required">
+            <div class="help-block" ng-show="form.text.$error.required && form.submitted">
                 Required
             </div>
-            <div class="help-block" ng-show="form.text.$error.maxlength">
+            <div class="help-block" ng-show="form.text.$error.maxlength && form.submitted">
                 Too long
             </div>
         </div>
         <div class="form-group">
             <label class="control-label">
-                Assign to user/partner
+                Assign to Partner
             </label>
             <select class="form-control" ng-model="fields.partner.val" ng-options="p.name for p in fields.partner.choices track by p.id" ng-change="refreshUserList()"> </select>
+        </div>
+        <div class="form-group">
+            <label class="control-label">
+                Specific User (Optional)
+            </label>
             <select class="form-control" ng-model="fields.user.val" ng-options="u.name for u in fields.user.choices track by u.id"></select>
         </div>
     </form>
 </div>
 
 <div class="modal-footer">
-  <button class="btn btn-primary btn-modal-accept" ng-click="ok()">Create</button>
+  <button class="btn btn-primary btn-modal-accept" ng-click="ok()">Open</button>
   <button class="btn btn-default btn-modal-cancel" ng-click="cancel()">Cancel</button>
 </div>

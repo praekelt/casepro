@@ -630,7 +630,7 @@ services.factory('ModalService', ['$rootScope', '$uibModal', ($rootScope, $uibMo
       })
       .result
 
-    create_case: ({
+    createCase: ({
       context = {},
       title = null,
       templateUrl = '/sitestatic/templates/modals/create_case.html',
@@ -651,11 +651,10 @@ services.factory('ModalService', ['$rootScope', '$uibModal', ($rootScope, $uibMo
             user: {val: 0, choices: []}
           }
 
-
           $scope.refreshUserList = () ->
-              UserService.fetchInPartner($scope.fields.partner.val, true).then((users) ->
-                  $scope.fields.user.choices = [{name: "Anyone"}].concat(users)
-              )
+            UserService.fetchInPartner($scope.fields.partner.val, true).then((users) ->
+              $scope.fields.user.choices = [{name: "-- Anyone --"}].concat(users)
+            )
 
           $scope.setScheme = (scheme) ->
             $scope.fields.urn.scheme = scheme
@@ -675,9 +674,9 @@ services.factory('ModalService', ['$rootScope', '$uibModal', ($rootScope, $uibMo
           $scope.setScheme('tel')
 
           PartnerService.fetchAll().then((partners) ->
-              $scope.fields.partner.choices = partners
-              $scope.fields.partner.val = partners[0]
-              $scope.refreshUserList()
+            $scope.fields.partner.choices = partners
+            $scope.fields.partner.val = partners[0]
+            $scope.refreshUserList()
           )
       })
       .result

@@ -893,11 +893,11 @@ describe('services:', () ->
       )
     )
 
-    describe('create_case', () ->
+    describe('createCase', () ->
         it('should draw the modal', () ->
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+          ModalService.createCase({
             title: 'Foo',
           })
 
@@ -912,7 +912,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
           })
           .then(-> fulfilled = true)
@@ -952,7 +953,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
           })
           .then(-> fulfilled = true)
@@ -965,7 +967,7 @@ describe('services:', () ->
 
           $rootScope.$apply()
 
-          expect(document.querySelector('.has-error label').innerHTML).toContain('Recipient')
+          expect(document.querySelector('.has-error label').innerHTML).toContain('Contact')
           expect(document.querySelector('.form-group .help-block').innerHTML).toContain('Required')
           expect(document.querySelector('.form-group .help-block').className).not.toContain('ng-hide')
           expect(fulfilled).toBe(false)
@@ -976,7 +978,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
           })
           .then(-> fulfilled = true)
@@ -991,7 +994,7 @@ describe('services:', () ->
 
           $rootScope.$apply()
 
-          expect(document.querySelector('.has-error label').innerHTML).toContain('Recipient')
+          expect(document.querySelector('.has-error label').innerHTML).toContain('Contact')
           expect(document.querySelectorAll('.form-group .help-block')[1].innerHTML).toContain(
             'Invalid phone number format. Should be in the format +27741234567')
           expect(document.querySelectorAll('.form-group .help-block')[1].className).not.toContain('ng-hide')
@@ -1003,7 +1006,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
           })
           .then(-> fulfilled = true)
@@ -1031,7 +1035,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
           })
           .then(-> fulfilled = true)
@@ -1058,7 +1063,8 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
-          ModalService.create_case({
+
+          ModalService.createCase({
             title: 'Foo',
             maxLength: 3,
           })

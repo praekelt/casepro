@@ -184,8 +184,16 @@ class DailyCountsTest(BaseStatsTest):
         self.assertEqual(
             DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_OPENED).day_totals(),
             [(date(2015, 1, 1), 1)])
+
+        self.assertEqual(
+            DailyCount.get_by_org([self.unicef], DailyCount.TYPE_CASE_OPENED).day_totals(),
+            [(date(2015, 1, 1), 1)])
+
         self.assertEqual(
             DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+            [])
+        self.assertEqual(
+            DailyCount.get_by_org([self.unicef], DailyCount.TYPE_CASE_CLOSED).day_totals(),
             [])
 
         self.assertEqual(
@@ -211,6 +219,13 @@ class DailyCountsTest(BaseStatsTest):
                 [(date(2015, 1, 1), 1)])
             self.assertEqual(
                 DailyCount.get_by_partner([case.assignee], DailyCount.TYPE_CASE_CLOSED).day_totals(),
+                [(date(2015, 1, 1), 1)])
+
+            self.assertEqual(
+                DailyCount.get_by_org([self.unicef], DailyCount.TYPE_CASE_OPENED).day_totals(),
+                [(date(2015, 1, 1), 1)])
+            self.assertEqual(
+                DailyCount.get_by_org([self.unicef], DailyCount.TYPE_CASE_CLOSED).day_totals(),
                 [(date(2015, 1, 1), 1)])
 
             self.assertEqual(
@@ -343,15 +358,15 @@ class DailyCountExportTest(BaseStatsTest):
         (replies_sheet, cases_opened_sheet, cases_closed_sheet) = workbook.sheets()
 
         self.assertEqual(replies_sheet.nrows, 32)
-        self.assertExcelRow(replies_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(replies_sheet, 0, ['Date', 'Carol', 'Evan', 'Kidus', 'Rick', ])
         self.assertExcelRow(replies_sheet, 1, [d1, 0, 1, 0, 0], tz=tz)
-        self.assertExcelRow(replies_sheet, 15, [d2, 0, 0, 0, 1], tz=tz)
+        self.assertExcelRow(replies_sheet, 15, [d2, 1, 0, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_opened_sheet, 0, ['Date', 'Carol', 'Evan', 'Kidus', 'Rick', ])
         self.assertExcelRow(cases_opened_sheet, 1, [d1, 0, 1, 0, 0], tz=tz)
         self.assertExcelRow(cases_opened_sheet, 15, [d2, 0, 1, 0, 0], tz=tz)
 
-        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Kidus', 'Evan', 'Rick', 'Carol'])
+        self.assertExcelRow(cases_closed_sheet, 0, ['Date', 'Carol', 'Evan', 'Kidus', 'Rick', ])
         self.assertExcelRow(cases_closed_sheet, 1, [d1, 0, 0, 0, 0], tz=tz)
         self.assertExcelRow(cases_closed_sheet, 15, [d2, 0, 0, 0, 0], tz=tz)
 

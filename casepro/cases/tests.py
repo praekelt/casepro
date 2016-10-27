@@ -11,6 +11,7 @@ from django.core.urlresolvers import reverse
 from django.test.utils import override_settings, modify_settings
 from django.utils import timezone
 from mock import patch
+from six.moves import reload_module
 from temba_client.utils import format_iso8601
 
 from casepro.contacts.models import Contact
@@ -351,8 +352,10 @@ class CaseTest(BaseCasesTest):
         self.assertEqual(open_case, case2)
 
     def test_get_open_with_user_assignee(self):
-        '''If a case is opened with the user_assignee field set, the created case should have the assigned user, and
-        the created case action should also have the assigned user.'''
+        """
+        If a case is opened with the user_assignee field set, the created case should have the assigned user, and
+        the created case action should also have the assigned user.
+        """
         msg = self.create_message(
             self.unicef, 123, self.ann, "Hello", created_on=datetime(2014, 1, 5, 0, 0, tzinfo=pytz.UTC))
         case = Case.get_or_open(self.unicef, self.user2, msg, 'Hello', self.moh, user_assignee=self.user1)
@@ -400,6 +403,13 @@ class CaseTest(BaseCasesTest):
             self.unicef, self.user2, None, 'Hello', self.moh, user_assignee=self.user1, contact=self.ann)
         self.assertEqual(case3.is_new, True)
         self.assertNotEqual(case2, case3)
+
+    def test_get_open_no_message_or_contact(self):
+        """
+        When using get_or_open with no initial message and no existing contact a ValueError should be raised.
+        """
+        self.assertRaises(ValueError, Case.get_or_open, self.unicef, self.user2, None, 'Hello', self.moh,
+                          user_assignee=self.user1, contact=None)
 
     def test_search(self):
         d1 = datetime(2014, 1, 9, 0, 0, tzinfo=pytz.UTC)
@@ -477,7 +487,7 @@ class CaseCRUDLTest(BaseCasesTest):
     def setUp(self):
         super(CaseCRUDLTest, self).setUp()
 
-        reload(pod_registry)
+        reload_module(pod_registry)
 
         self.ann = self.create_contact(self.unicef, 'C-001', "Ann",
                                        fields={'age': "34"}, groups=[self.females, self.reporters])
@@ -986,7 +996,9 @@ class CaseCRUDLTest(BaseCasesTest):
         mock_fetch_contact_messages.reset_mock()
 
     def test_timeline_no_initial_message(self):
-        '''If a case has no initial message, the timeline should start from the datetime it was opened.'''
+        """
+        If a case has no initial message, the timeline should start from the datetime it was opened.
+        """
         case = self.create_case(self.unicef, self.ann, self.moh, message=None, user_assignee=self.user1)
         caseaction = CaseAction.create(case, self.user1, CaseAction.OPEN, assignee=self.moh, user_assignee=self.user1)
 
@@ -1279,7 +1291,7 @@ class PartnerCRUDLTest(BaseCasesTest):
         self.login(self.admin)
         response = self.url_get('unicef', url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['form'].fields.keys(),
+        self.assertEqual(list(response.context['form'].fields.keys()),
                          ['name', 'description', 'logo', 'is_restricted', 'labels', 'loc'])
 
         # create label restricted partner
@@ -1352,7 +1364,7 @@ class PartnerCRUDLTest(BaseCasesTest):
         # get update page
         response = self.url_get('unicef', url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['form'].fields.keys(),
+        self.assertEqual(list(response.context['form'].fields.keys()),
                          ['name', 'description', 'primary_contact', 'logo', 'is_restricted', 'labels', 'loc'])
 
         # post update without name field
@@ -1361,16 +1373,16 @@ class PartnerCRUDLTest(BaseCasesTest):
 
         # post name change
         response = self.url_post('unicef', url, {'name': "MOH2"})
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, 'http://unicef.localhost/partner/read/%d/' % self.moh.pk)
+        self.assertRedirects(response, 'http://unicef.localhost/partner/read/%d/' % self.moh.pk,
+                             fetch_redirect_response=False)
 
         moh = Partner.objects.get(pk=self.moh.pk)
         self.assertEqual(moh.name, "MOH2")
 
         # post primary contact change
         response = self.url_post('unicef', url, {'name': "MOH", 'primary_contact': self.user1.pk})
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, 'http://unicef.localhost/partner/read/%d/' % self.moh.pk)
+        self.assertRedirects(response, 'http://unicef.localhost/partner/read/%d/' % self.moh.pk,
+                             fetch_redirect_response=False)
 
         moh = Partner.objects.get(pk=self.moh.pk)
         self.assertEqual(moh.primary_contact, self.user1)

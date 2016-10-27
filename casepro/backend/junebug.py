@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime
 from django.conf import settings
 from django.conf.urls import url
@@ -5,14 +7,14 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 import functools
-import json
 import requests
 import pytz
+import six
 
 from . import BaseBackend
 from ..contacts.models import Contact
 from ..msgs.models import Message
-from ..utils import uuid_to_int
+from ..utils import uuid_to_int, json_decode
 
 from dash.utils import is_dict_equal
 from dash.utils.sync import BaseSyncer, sync_local_to_changes
@@ -76,6 +78,8 @@ class IdentityStore(object):
         address_dict = {}
         for address in addresses:
             type_, addr = address.split(':', 1)
+            if type_ == "tel":
+                type_ = "msisdn"
             address_dict[type_] = {addr: {}}
         identity = self.session.post(
             "%s/api/v1/identities/" % (self.base_url,),
@@ -111,7 +115,8 @@ class IdentityStoreContact(object):
 
         # Languages in the identity store have the country code at the end
         self.language = None
-        remote_language = json_data.get('details').get('preferred_language')
+        language_field = getattr(settings, 'IDENTITY_LANGUAGE_FIELD', "language")
+        remote_language = json_data.get('details').get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition('_')
         self.name = json_data.get('details').get('name', None)
@@ -131,6 +136,8 @@ class IdentityStoreContact(object):
                     break
                 scheme_addresses.append(urn)
             for value in scheme_addresses:
+                if scheme == "msisdn":
+                    scheme = "tel"
                 self.urns.append("%s:%s" % (scheme, value))
 
 
@@ -309,16 +316,15 @@ class JunebugBackend(BaseBackend):
 
     @staticmethod
     def _identity_equal(identity, contact):
-        details = identity.get('details', {})
+        identity = IdentityStoreContact(identity)
         for addr in contact.urns:
-            addr_type, address = addr.split(':', 1)
-            if details.get('addresses', {}).get(addr_type, {}).get(address) is None:
+            if addr not in identity.urns:
                 return False
         if contact.name is not None:
-            if details.get('name') != contact.name:
+            if identity.name != contact.name:
                 return False
         if contact.language is not None:
-            if details.get('language') != contact.language:
+            if identity.language != contact.language:
                 return False
         return True
 
@@ -338,6 +344,8 @@ class JunebugBackend(BaseBackend):
         identities = []
         for urn in contact.urns:
             addr_type, addr = urn.split(':', 1)
+            if addr_type == "tel":
+                addr_type = "msisdn"
             identities.extend(identity_store.get_identities_for_address(addr, addr_type))
         identities = [identity for identity in identities if self._identity_equal(identity, contact)]
 
@@ -487,15 +495,15 @@ def received_junebug_message(request):
         return JsonResponse({'reason': "Method not allowed."}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = json_decode(request.body)
     except ValueError as e:
-        return JsonResponse({'reason': "JSON decode error", 'details': e.message}, status=400)
+        return JsonResponse({'reason': "JSON decode error", 'details': six.text_type(e)}, status=400)
 
     identity_store = IdentityStore(
         settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
     identities = identity_store.get_identities_for_address(data.get('from'))
     try:
-        identity = identities.next()
+        identity = next(identities)
     except StopIteration:
         identity = identity_store.create_identity(['%s:%s' % (settings.IDENTITY_ADDRESS_TYPE, data.get('from'))])
     contact = Contact.get_or_create(request.org, identity.get('id'))
@@ -520,9 +528,9 @@ def receive_identity_store_optout(request):
         return JsonResponse({'reason': "Method not allowed."}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = json_decode(request.body)
     except ValueError as e:
-        return JsonResponse({'reason': "JSON decode error", 'details': e.message}, status=400)
+        return JsonResponse({'reason': "JSON decode error", 'details': six.text_type(e)}, status=400)
 
     try:
         identity_id = data['identity']

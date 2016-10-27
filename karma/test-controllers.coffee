@@ -151,24 +151,18 @@ describe('controllers:', () ->
       reassignModal = spyOnPromise($q, $scope, UtilsService, 'assignModal')
       reassignCase = spyOnPromise($q, $scope, CaseService, 'reassign')
       partnerFetch = spyOnPromise($q, $scope, PartnerService, 'fetchAll')
-      usersForPartner = spyOnPromise($q, $scope, UserService, 'fetchInPartner')
-
 
       $scope.caseObj = test.case1
       $scope.onReassign()
 
       partnerFetch.resolve([test.moh, test.who])
-      usersForPartner.resolve([test.user1])
       reassignModal.resolve({assignee: test.moh, user: test.user1})
       reassignCase.resolve()
 
       # List of partners should be fetched
       expect(PartnerService.fetchAll).toHaveBeenCalled()
-      # List of users for first partner should be fetched
-      expect(UserService.fetchInPartner).toHaveBeenCalledWith(test.moh, true)
       # Modal should be sent list of partners and list of users for first partner
-      expect(UtilsService.assignModal).toHaveBeenCalledWith(
-        'Re-assign', null, [test.moh, test.who], [test.user1])
+      expect(UtilsService.assignModal).toHaveBeenCalledWith('Re-assign', null, [test.moh, test.who])
       # Result of modal selection should be sent to reassign the case
       expect(CaseService.reassign).toHaveBeenCalledWith(test.case1, test.moh, test.user1)
     )
@@ -298,10 +292,9 @@ describe('controllers:', () ->
         expect($scope.isInfiniteScrollEnabled()).toEqual(true)
       )
 
-      it('loadOldItems should report to raven on failure', () ->
+      it('loadOldItems should display alert on failure', () ->
         spyOn(CaseService, 'fetchOld').and.callThrough()
         spyOn(UtilsService, 'displayAlert')
-        spyOn(Raven, 'captureMessage')
 
         $httpBackend.expectGET(/\/case\/search\/\?.*/).respond(() -> [500, 'Server error', {}, 'Internal error'])
 
@@ -309,7 +302,6 @@ describe('controllers:', () ->
 
         $httpBackend.flush()
         expect(UtilsService.displayAlert).toHaveBeenCalled()
-        expect(Raven.captureMessage).toHaveBeenCalled()
       )
 
       it('getItemFilter', () ->
@@ -480,11 +472,9 @@ describe('controllers:', () ->
           $scope.onCaseFromMessage(test.msg1)
 
           fetchPartners.resolve([test.moh, test.who])
-          fetchUsersForPartner.resolve([test.user1])
           newCaseModal.resolve({summary: "New case", assignee: test.moh, user: test.user1})
           openCase.resolve({id: 601, summary: "New case", isNew: false})
 
-          expect(UserService.fetchInPartner).toHaveBeenCalledWith(test.moh, true)
           expect(CaseService.open).toHaveBeenCalledWith(test.msg1, "New case", test.moh, test.user1)
           expect(UtilsService.navigate).toHaveBeenCalledWith('/case/read/601/?alert=open_found_existing')
         )
@@ -549,12 +539,13 @@ describe('controllers:', () ->
       )
 
       it('onCaseWithoutMessage existing case', () ->
-        createCaseModal = spyOnPromise($q, $scope, ModalService, 'create_case')
+        createCaseModal = spyOnPromise($q, $scope, ModalService, 'createCase')
         openCase = spyOnPromise($q, $scope, CaseService, 'open')
         redirect = spyOnPromise($q, $scope, UtilsService, 'navigate')
 
         $scope.onCaseWithoutMessage()
-        expect(ModalService.create_case).toHaveBeenCalledWith({title: 'Create case'})
+
+        expect(ModalService.createCase).toHaveBeenCalledWith({title: 'Open Case'})
 
         createCaseModal.resolve({text: 'test summary', partner: 2, user: 3, urn: 'tel:123'})
         expect(CaseService.open).toHaveBeenCalledWith(null, 'test summary', 2, 3, 'tel:123')
@@ -564,12 +555,12 @@ describe('controllers:', () ->
       )
 
       it('onCaseWithoutMessage no existing case', () ->
-        createCaseModal = spyOnPromise($q, $scope, ModalService, 'create_case')
+        createCaseModal = spyOnPromise($q, $scope, ModalService, 'createCase')
         openCase = spyOnPromise($q, $scope, CaseService, 'open')
         redirect = spyOnPromise($q, $scope, UtilsService, 'navigate')
 
         $scope.onCaseWithoutMessage()
-        expect(ModalService.create_case).toHaveBeenCalledWith({title: 'Create case'})
+        expect(ModalService.createCase).toHaveBeenCalledWith({title: 'Open Case'})
 
         createCaseModal.resolve({text: 'test summary', partner: 2, user: 3, urn: 'tel:123'})
         expect(CaseService.open).toHaveBeenCalledWith(null, 'test summary', 2, 3, 'tel:123')

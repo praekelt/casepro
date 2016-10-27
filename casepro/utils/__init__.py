@@ -6,6 +6,7 @@ import json
 import phonenumbers
 import pytz
 import re
+import six
 import unicodedata
 
 from dateutil.relativedelta import relativedelta
@@ -64,6 +65,16 @@ def json_encode(data):
     Encodes the given primitives as JSON using Django's encoder which can handle dates
     """
     return json.dumps(data, cls=JSONEncoder)
+
+
+def json_decode(data):
+    """
+    Decodes the given JSON as primitives
+    """
+    if isinstance(data, six.binary_type):
+        data = data.decode('utf-8')
+
+    return json.loads(data)
 
 
 def safe_max(*args, **kwargs):

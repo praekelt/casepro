@@ -21,7 +21,7 @@ SINGLETON_ALERTS = ['pod_load_api_failure']
 #============================================================================
 # Inbox controller (DOM parent of messages and cases)
 #============================================================================
-controllers.controller('InboxController', ['$scope', '$window', '$location', 'LabelService', 'UtilsService', ($scope, $window, $location, LabelService, UtilsService) ->
+controllers.controller('InboxController', ['$scope', '$window', '$location', 'LabelService', 'UtilsService', 'ModalService', 'CaseService', ($scope, $window, $location, LabelService, UtilsService, ModalService, CaseService) ->
 
   $scope.user = $window.contextData.user
   $scope.labels = $window.contextData.labels
@@ -68,6 +68,18 @@ controllers.controller('InboxController', ['$scope', '$window', '$location', 'La
   $scope.filterDisplayLabels = (labels) ->
     # filters out the active label from the given set of message labels
     if $scope.activeLabel then (l for l in labels when l.id != $scope.activeLabel.id) else labels
+
+  $scope.onCaseWithoutMessage = () ->
+    ModalService.createCase({
+      title: "Open Case"
+    }).then((result) ->
+      CaseService.open(null, result.text, result.partner, result.user, result.urn).then((caseObj) ->
+        caseUrl = 'case/read/' + caseObj.id + '/'
+        if !caseObj.is_new
+          caseUrl += '?alert=open_found_existing'
+        UtilsService.navigate(caseUrl)
+      )
+    )
 ])
 
 
@@ -191,11 +203,6 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
           $scope.loadOldItems(true)
     ).catch((error) ->
       UtilsService.displayAlert('error', "Problem communicating with the server")
-
-      Raven.captureMessage(error.statusText + " (" + error.status + ")", {
-        user: if $scope.user then {id: $scope.user.id} else null,
-        extra: {xhr_url: error.config.url}
-      })
     )
 
   $scope.isInfiniteScrollEnabled = () ->
@@ -209,7 +216,7 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 # Incoming messages controller
 #============================================================================
-controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'CaseService', 'InboxUIService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, CaseService, InboxUIService, MessageService, PartnerService, UserService, UtilsService) ->
+controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $timeout, $uibModal, $controller, CaseService, MessageService, PartnerService, UserService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
 
   $scope.advancedSearch = false
@@ -377,15 +384,12 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
     }})
 
   newCaseFromMessage = (message, possibleAssignees) ->
-    assignee = if possibleAssignees then possibleAssignees[0] else null
-    UserService.fetchInPartner(assignee, true).then((users) ->
-      UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees, users).then((data) ->
-        CaseService.open(message, data.summary, data.assignee, data.user).then((caseObj) ->
-            caseUrl = '/case/read/' + caseObj.id + '/'
-            if !caseObj.is_new
-              caseUrl += '?alert=open_found_existing'
-            UtilsService.navigate(caseUrl)
-        )
+    UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees).then((data) ->
+      CaseService.open(message, data.summary, data.assignee, data.user).then((caseObj) ->
+          caseUrl = '/case/read/' + caseObj.id + '/'
+          if !caseObj.is_new
+            caseUrl += '?alert=open_found_existing'
+          UtilsService.navigate(caseUrl)
       )
     )
 ])
@@ -475,6 +479,7 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
 
   $scope.partners = []
   $scope.users = []
+  $scope.userFilters = {all: false}
 
   $scope.onTabInit = (tab) ->
     if tab == 'summary'
@@ -517,13 +522,13 @@ controllers.controller('HomeController', ['$scope', '$controller', 'LabelService
         $scope.users = users
       )
 
-  $scope.onSelectAllUsers = () ->
-    UserService.fetchAll(true).then((users) ->
+  $scope.onChangeUsersFilter = () ->
+    if $scope.userFilters.all
+      UserService.fetchAll(true).then((users) ->
         $scope.users = users
       )
-
-  $scope.onSelectOrgOnlyUsers = () ->
-    UserService.fetchNonPartner(true).then((users) ->
+    else
+      UserService.fetchNonPartner(true).then((users) ->
         $scope.users = users
       )
 
@@ -617,14 +622,11 @@ controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'Case
   $scope.sendMessage = ->
     $scope.sending = true
 
-    try
-      CaseService.replyTo($scope.caseObj, $scope.newMessage).then(() ->
-        $scope.newMessage = ''
-        $scope.sending = false
-        $scope.$broadcast('timelineChanged')
-      )
-    catch e
-      $window.Raven.captureException(e)
+    CaseService.replyTo($scope.caseObj, $scope.newMessage).then(() ->
+      $scope.newMessage = ''
+      $scope.sending = false
+      $scope.$broadcast('timelineChanged')
+    )
 
   $scope.onNewMessageChanged = ->
     $scope.msgCharsRemaining = $scope.maxMsgChars - $scope.newMessage.length
@@ -652,12 +654,10 @@ controllers.controller('CaseController', ['$scope', '$window', '$timeout', 'Case
 
   $scope.onReassign = () ->
     PartnerService.fetchAll().then((partners) ->
-      UserService.fetchInPartner(partners[0], true).then((users) ->
-        UtilsService.assignModal("Re-assign", null, partners, users).then((result) ->
-          {assignee, user} = result
-          CaseService.reassign($scope.caseObj, assignee, user).then(() ->
-            $scope.$broadcast('timelineChanged')
-          )
+      UtilsService.assignModal("Re-assign", null, partners).then((result) ->
+        {assignee, user} = result
+        CaseService.reassign($scope.caseObj, assignee, user).then(() ->
+          $scope.$broadcast('timelineChanged')
         )
       )
     )

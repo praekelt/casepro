@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
+import six
+
 from dash.orgs.models import Org
 from dash.utils import intersection
 from datetime import timedelta
@@ -274,49 +276,35 @@ class Case(models.Model):
         with r.lock(CASE_LOCK_KEY % (org.pk, contact.uuid)):
             if message:
                 message.refresh_from_db()
+                case = message.case
+            else:
+                message = None
+                case = contact.cases.filter(closed_on=None).first()
+            # if there is already an associated case, return that
+            if case:
+                case.is_new = False
+                return case
 
-                # if message is already associated with a case, return that
-                if message.case:
-                    message.case.is_new = False
-                    return message.case
+            # suspend from groups, expire flows and archive messages
+            contact.prepare_for_case()
 
-                # suspend from groups, expire flows and archive messages
-                message.contact.prepare_for_case()
+            case = cls.objects.create(org=org, assignee=assignee, initial_message=message, contact=contact,
+                                      summary=summary, user_assignee=user_assignee)
 
-                case = cls.objects.create(org=org, assignee=assignee, initial_message=message, contact=message.contact,
-                                          summary=summary, user_assignee=user_assignee)
-                case.is_new = True
+            if message:
                 case.labels.add(*list(message.labels.all()))  # copy labels from message to new case
-                case.watchers.add(user)
 
                 # attach message to this case
                 message.case = case
                 message.save(update_fields=('case',))
 
-                action = CaseAction.create(case, user, CaseAction.OPEN, assignee=assignee, user_assignee=user_assignee)
+            case.is_new = True
+            case.watchers.add(user)
+            action = CaseAction.create(case, user, CaseAction.OPEN, assignee=assignee, user_assignee=user_assignee)
 
-                for assignee_user in assignee.get_users():
-                    if assignee_user != user:
-                        Notification.new_case_assignment(org, assignee_user, action)
-            else:
-                case = contact.cases.filter(closed_on=None).first()
-                if case:
-                    case.is_new = False
-                    return case
-
-                # suspend from groups, expire flows and archive messages
-                contact.prepare_for_case()
-
-                case = cls.objects.create(
-                    org=org, assignee=assignee, initial_message=None, contact=contact, summary=summary,
-                    user_assignee=user_assignee)
-                case.is_new = True
-                case.watchers.add(user)
-
-                action = CaseAction.create(case, user, CaseAction.OPEN, assignee=assignee, user_assignee=user_assignee)
-                for assignee_user in assignee.get_users():
-                    if assignee_user != user:
-                        Notification.new_case_assignment(org, assignee_user, action)
+            for assignee_user in assignee.get_users():
+                if assignee_user != user:
+                    Notification.new_case_assignment(org, assignee_user, action)
         return case
 
     def get_timeline(self, after, before, merge_from_backend):
@@ -620,7 +608,7 @@ class CaseExport(BaseSearchExport):
         )
 
         def add_sheet(num):
-            sheet = book.add_sheet(unicode(_("Cases %d" % num)))
+            sheet = book.add_sheet(six.text_type(_("Cases %d" % num)))
             self.write_row(sheet, 0, all_fields)
             return sheet
 
