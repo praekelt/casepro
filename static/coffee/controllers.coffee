@@ -368,9 +368,6 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$uibModal',
         newCaseFromMessage(message, partners)
       )
 
-  $scope.onCaseWithoutMessage = () ->
-      InboxUIService.createCaseWithoutMessage()
-
   $scope.onLabelMessage = (message) ->
     UtilsService.labelModal("Labels", "Update the labels for this message. This determines which other partner organizations can view this message.", $scope.labels, message.labels).then((selectedLabels) ->
       MessageService.relabel(message, selectedLabels).then(() ->

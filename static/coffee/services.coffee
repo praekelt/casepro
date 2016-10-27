@@ -792,22 +792,3 @@ services.factory('MessageBoardService', ['$http', '$httpParamSerializer', '$wind
 
 ])
 
-
-#=====================================================================
-# InboxUIService service
-#=====================================================================
-services.factory('InboxUIService', ['CaseService', 'ModalService', 'UtilsService', (CaseService, ModalService, UtilsService) ->
-  new class InboxUIService
-    createCaseWithoutMessage: () ->
-      ModalService.create_case({
-        title: "Create case"
-      }).then((result) ->
-        CaseService.open(null, result.text, result.partner, result.user, result.urn).then((caseObj) ->
-          caseUrl = 'case/read/' + caseObj.id + '/'
-          if !caseObj.is_new
-            caseUrl += '?alert=open_found_existing'
-          UtilsService.navigate(caseUrl)
-        )
-      )
-])
-
