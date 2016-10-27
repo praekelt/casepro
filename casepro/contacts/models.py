@@ -13,7 +13,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_redis import get_redis_connection
 
 from casepro.backend import get_backend
-from casepro.utils import get_language_name, validate_urn
+from casepro.utils import get_language_name
 
 FIELD_LOCK_KEY = 'lock:field:%d:%s'
 GROUP_LOCK_KEY = 'lock:group:%d:%s'
