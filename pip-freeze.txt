@@ -59,4 +59,3 @@ xlwt==1.1.2
 casepropods.dummy		
 casepropods.family_connect_registration
 casepropods.family_connect_subscription>=0.3.1
-django-contrib-comments==1.7.2
