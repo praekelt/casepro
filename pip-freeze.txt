@@ -52,10 +52,8 @@ six==1.10.0
 smartmin==1.9.2
 sorl-thumbnail==12.3
 sqlparse==0.1.15
-wsgiref==0.1.2
 xlrd==1.0.0
 xlutils==2.0.0
 xlwt==1.1.2
-casepropods.dummy		
 casepropods.family_connect_registration
 casepropods.family_connect_subscription>=0.3.1
