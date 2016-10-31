@@ -73,7 +73,6 @@ CACHES = {
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS += (
-    'casepropods.dummy.plugin.DummyPodPlugin',
     'casepropods.family_connect_registration.plugin.RegistrationPlugin',
     'casepropods.family_connect_subscription.plugin.SubscriptionPlugin',
 )
@@ -88,39 +87,6 @@ if SENTRY_DSN:
 
 # Pods
 PODS = [{
-    'label': 'dummy_pod',
-    'title': 'Maternal Health Info',
-    'data': {
-        'items': [{
-            'name': 'EDD',
-            'value': '2015-07-18'
-        }, {
-            'name': 'Clinic Code',
-            'value': '2034 6524 6421'
-        }],
-        'actions': [{
-            'type': 'opt_out',
-            'name': 'Opt out',
-            'confirm': True,
-            'busy_name': 'Opting out',
-            'payload': {
-                'delay': 1,
-                'result': (True, {'message': 'User opted out'})
-            }
-        }, {
-            'type': 'birth_message_set',
-            'name': 'Switch to birth message set',
-            'payload': {
-                'result': (
-                    False, {
-                        'message': (
-                            'The user appears to no longer be on the '
-                            'birth message set')
-                    })
-            }
-        }]
-    }
-}, {
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
     'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
