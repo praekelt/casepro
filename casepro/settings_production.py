@@ -48,6 +48,8 @@ IDENTITY_AUTH_TOKEN = os.environ.get('IDENTITY_AUTH_TOKEN',
                                      'replace-with-auth-token')
 IDENTITY_ADDRESS_TYPE = os.environ.get('IDENTITY_ADDRESS_TYPE',
                                        'msisdn')
+IDENTITY_LANGUAGE_FIELD = os.environ.get('IDENTITY_LANGUAGE_FIELD',
+                                         'language')
 
 # Time until a case is re-assigned (specified in minutes)
 case_response_required_time_str = os.environ.get(
