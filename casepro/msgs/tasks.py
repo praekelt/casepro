@@ -130,9 +130,9 @@ def faq_csv_import(org, task_id):  # pragma: no cover
     task.save()
 
     try:
-        with transaction.atomic():  # prevents partial csv import - all or nothing
+        with transaction.atomic() and open(task.csv_file.path) as csv_file:  # transaction prevents partial csv import
             # Load csv into Dict
-            records = csv.DictReader(task.csv_file)
+            records = csv.DictReader(csv_file)
             lines = 0
 
             for line in records:
@@ -149,7 +149,7 @@ def faq_csv_import(org, task_id):  # pragma: no cover
 
                 # Start creation of translation FAQs
                 # get a list of the csv keys
-                keys = line.keys()
+                keys = list(line)
                 # remove non-translation keys
                 parent_keys = ['Parent Question', 'Parent Language', 'Parent Answer', 'Parent ID', 'Labels']
                 [keys.remove(parent_key) for parent_key in parent_keys]

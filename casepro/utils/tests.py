@@ -16,7 +16,7 @@ from casepro.test import BaseCasesTest
 
 from . import safe_max, normalize, match_keywords, truncate, str_to_bool, json_encode, TimelineItem, uuid_to_int
 from . import date_to_milliseconds, datetime_to_microseconds, microseconds_to_datetime, month_range, date_range
-from . import get_language_name, json_decode, humanise_seconds, validate_urn_as_e164, InvalidURN
+from . import get_language_name, json_decode, humanise_seconds
 from .email import send_email
 from .middleware import JSONMiddleware
 
@@ -160,14 +160,6 @@ class UtilsTest(BaseCasesTest):
         self.assertEqual(humanise_seconds(86501), "1d 1s")
         self.assertEqual(humanise_seconds(86561), "1d 1m 1s")
         self.assertEqual(humanise_seconds(90161), "1d 1h 1m 1s")
-
-    def test_validate_urn_as_e164(self):
-        self.assertRaises(InvalidURN, validate_urn_as_e164, '0825550011')
-        self.assertRaises(InvalidURN, validate_urn_as_e164, '0027825550011')
-        self.assertRaises(InvalidURN, validate_urn_as_e164, '027825550011')
-        self.assertRaises(InvalidURN, validate_urn_as_e164, '0027005550011')
-        self.assertRaises(InvalidURN, validate_urn_as_e164, '0027825550011445566')
-        self.assertTrue(validate_urn_as_e164('+27825552233'))
 
 
 class EmailTest(BaseCasesTest):
