@@ -75,7 +75,6 @@ CACHES = {
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS += (
-    'casepropods.family_connect_registration.plugin.RegistrationPlugin',
     'casepropods.family_connect_subscription.plugin.SubscriptionPlugin',
 )
 
@@ -89,26 +88,6 @@ if SENTRY_DSN:
 
 # Pods
 PODS = [{
-    'label': "family_connect_registration_pod",
-    'title': "Registration Information",
-    'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
-    'token': "5c5286055b314b09394f2f648cc1409822343ed5",
-    'field_mapping': [
-        {"field": "mama_name", "field_name": "Mother Name"},
-        {"field": "mama_surname", "field_name": "Mother Surname"},
-        {"field": "last_period_date", "field_name": "Date of last period"},
-        {"field": "language", "field_name": "Language Preference"},
-        {"field": "mama_id_type", "field_name": "ID Type"},
-        {"field": "mama_id_no", "field_name": "ID Number"},
-        {"field": "msg_receiver", "field_name": "Message Receiver"},
-        {"field": "receiver_id", "field_name": "Receiver ID"},
-        {"field": "hoh_name", "field_name": "Head of Household Name"},
-        {"field": "hoh_surname", "field_name": "Head of Household Surname"},
-        {"field": "hoh_id", "field_name": "Head of Household ID"},
-        {"field": "operator_id", "field_name": "Operator ID"},
-        {"field": "msg_type", "field_name": "Receives Messages As"},
-    ]
-}, {
     'label': "family_connect_subscription_pod",
     'title': "Subscription Information",
     'url': "http://stage-based-messaging.familyconnect.seed.p16n.org/api/v1/",
