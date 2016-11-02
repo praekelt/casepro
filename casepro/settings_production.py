@@ -92,7 +92,8 @@ PODS = [{
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
     'url': "http://registration.familyconnect.seed.p16n.org/api/v1/registrations/",
-    'token': "5c5286055b314b09394f2f648cc1409822343ed5",
+    'token': os.environ.get('REGISTRATION_AUTH_TOKEN',
+                            'replace-with-auth-token'),
     'field_mapping': [
         {"field": "mama_name", "field_name": "Mother Name"},
         {"field": "mama_surname", "field_name": "Mother Surname"},
@@ -112,5 +113,6 @@ PODS = [{
     'label': "family_connect_subscription_pod",
     'title': "Subscription Information",
     'url': "http://stage-based-messaging.familyconnect.seed.p16n.org/api/v1/",
-    'token': "a6734782aeea2abf9a3ccb4e7a7077491966b115",
+    'token': os.environ.get('SUBSCRIPTION_AUTH_TOKEN',
+                            'replace-with-auth-token'),
 }]
