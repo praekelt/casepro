@@ -74,7 +74,6 @@ class CaseCRUDL(SmartCRUDL):
                 'all_labels': [l.as_json() for l in labels]
             })
 
-            context['anon_contacts'] = getattr(settings, 'SITE_ANON_CONTACTS', False)
             context['max_msg_chars'] = MAX_MESSAGE_CHARS
             context['can_update'] = can_update
             context['alert'] = self.request.GET.get('alert', None)
