@@ -58,6 +58,10 @@ case_response_required_time_str = os.environ.get(
 if case_response_required_time_str:
     SITE_CASE_RESPONSE_REQUIRED_TIME = int(case_response_required_time_str)
 
+SITE_HIDE_CONTACT_FIELDS = ["name"]
+SITE_CONTACT_DISPLAY = os.environ.get('SITE_CONTACT_DISPLAY',
+                                      'name')
+
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost:6379')
 
 BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
