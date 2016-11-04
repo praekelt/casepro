@@ -58,6 +58,10 @@ case_response_required_time_str = os.environ.get(
 if case_response_required_time_str:
     SITE_CASE_RESPONSE_REQUIRED_TIME = int(case_response_required_time_str)
 
+SITE_HIDE_CONTACT_FIELDS = ["name"]
+SITE_CONTACT_DISPLAY = os.environ.get('SITE_CONTACT_DISPLAY',
+                                      'name')
+
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost:6379')
 
 BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
@@ -75,6 +79,7 @@ CACHES = {
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS += (
+    'casepropods.family_connect_registration.plugin.RegistrationPlugin',
     'casepropods.family_connect_subscription.plugin.SubscriptionPlugin',
 )
 
@@ -88,8 +93,26 @@ if SENTRY_DSN:
 
 # Pods
 PODS = [{
+    'label': "family_connect_registration_pod",
+    'title': "Registration Information",
+    'url': os.environ.get('REGISTRATION_URL', ''),
+    'token': os.environ.get('REGISTRATION_AUTH_TOKEN',
+                            'replace-with-auth-token'),
+    'field_mapping': [
+        {"field": "last_period_date", "field_name": "Date of last period"},
+        {"field": "language", "field_name": "Language Preference"},
+        {"field": "mama_id_type", "field_name": "ID Type"},
+        {"field": "mama_id_no", "field_name": "ID Number"},
+        {"field": "msg_receiver", "field_name": "Message Receiver"},
+        {"field": "receiver_id", "field_name": "Receiver ID"},
+        {"field": "hoh_id", "field_name": "Head of Household ID"},
+        {"field": "operator_id", "field_name": "Operator ID"},
+        {"field": "msg_type", "field_name": "Receives Messages As"},
+    ]
+}, {
     'label': "family_connect_subscription_pod",
     'title': "Subscription Information",
-    'url': "http://stage-based-messaging.familyconnect.seed.p16n.org/api/v1/",
-    'token': "a6734782aeea2abf9a3ccb4e7a7077491966b115",
+    'url': os.environ.get('SUBSCRIPTION_URL', ''),
+    'token': os.environ.get('SUBSCRIPTION_AUTH_TOKEN',
+                            'replace-with-auth-token'),
 }]
