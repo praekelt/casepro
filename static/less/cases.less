@@ -42,6 +42,18 @@
   border-radius: 0px;
 }
 
+.no-margin {
+  margin: 0;
+}
+
+.no-bottom-padding {
+  padding-bottom: 0;
+}
+
+.no-border {
+  border: 0;
+}
+
 footer {
   padding-top: 10px;
   height: 20px;
@@ -62,14 +74,34 @@ footer {
   }
 }
 
+.glyphicon-duplicate:before {
+  content: "\e224";
+}
+
+tr + .emptymessage {
+    display: none;
+}
+.table-striped > tbody > tr.emptymessage > td{
+  background-color: #fff;
+}
+
+::-ms-clear {
+  display: none;
+}
+
+.input-clear .glyphicon {
+      pointer-events: all;
+    }
+
 /**
  * Smartmin tweaks - consistent layout for read page tables
  */
 .read-label {
-  width: 33%
+  width: 10%
 }
 .read-value {
-  width: 66%
+  width: 90%;
+  word-break: break-word;
 }
 form {
   input[type="checkbox"] {
@@ -83,6 +115,9 @@ form {
   /* use default bootstrap style */
   background-color: #f2dede;
   border: 1px solid transparent;
+}
+.table td.read-label {
+  text-align: left;
 }
 
 /**
@@ -147,6 +182,15 @@ ul.header-details li {
   list-style: none;
 }
 
+td.value-answer {
+  word-break: break-word;
+}
+td.value-question {
+  min-width: 100px;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
 .loading {
   background: url('../img/loading.gif') no-repeat center center;
   margin: 12px;
@@ -188,4 +232,12 @@ ul.header-details li {
 .field-test-widget .control-label {
   display: inline-block;
   padding: 5px 0;
+}
+
+.list-group-item {
+  padding: 5px 12px;
+  word-wrap: break-word;
+}
+.modal-body .well {
+  margin-bottom: 10px;
 }

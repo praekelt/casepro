@@ -16,9 +16,13 @@ from casepro.contacts.models import Contact
 from casepro.rules.models import ContainsTest, GroupsTest, FieldTest, WordCountTest, Quantifier
 from casepro.statistics.tasks import squash_counts
 from casepro.test import BaseCasesTest
+from smartmin.csv_imports.models import ImportTask
 
-from .models import Label, Message, MessageAction, MessageExport, MessageFolder, Outgoing, OutgoingFolder, ReplyExport
-from .tasks import handle_messages, pull_messages
+
+from .models import (Label, FAQ, Message, MessageAction, MessageExport, MessageFolder, Outgoing,
+                     OutgoingFolder, ReplyExport)
+
+from .tasks import handle_messages, pull_messages, faq_csv_import
 
 
 class LabelTest(BaseCasesTest):
@@ -306,6 +310,433 @@ class LabelCRUDLTest(BaseCasesTest):
 
         pregnancy = Label.objects.get(pk=self.pregnancy.pk)
         self.assertFalse(pregnancy.is_active)
+
+
+class FaqTest(BaseCasesTest):
+    def test_get_all(self):
+        self.assertEqual(set(FAQ.get_all(self.unicef)), {self.preg_faq1_eng, self.preg_faq1_bnt, self.preg_faq1_lug,
+                                                         self.preg_faq2_eng, self.tea_faq1_eng})
+        self.assertEqual(set(FAQ.get_all(self.unicef, self.tea)), {self.tea_faq1_eng})
+
+    def test_get_language(self):
+        self.assertEqual(self.tea_faq1_eng.get_language(), {'code': 'eng', 'name': 'English'})
+        self.tea_faq1_eng.language = None
+        self.assertIsNone(self.tea_faq1_eng.get_language())
+
+
+class FaqCRUDLTest(BaseCasesTest):
+    def test_create(self):
+        url = reverse('msgs.faq_create')
+
+        # log in as a non-administrator
+        self.login(self.user1)
+
+        response = self.url_get('unicef', url)
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        response = self.url_get('unicef', url)
+        self.assertEqual(response.status_code, 200)
+
+        # submit with no data
+        response = self.url_post('unicef', url, {})
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response, 'form', 'question', 'This field is required.')
+        self.assertFormError(response, 'form', 'answer', 'This field is required.')
+        self.assertFormError(response, 'form', 'language', 'This field is required.')
+        self.assertFormError(response, 'form', 'labels', 'Labels are required if no Parent is selected')
+
+        # submit again with invalid data (no parent, no labels)
+        response = self.url_post('unicef', url, {
+            'question': "Is nausea during pregnancy normal?",
+            'answer': "Yes, especially in the first 3 months",
+            'language': 'abc',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response, 'form', 'labels', 'Labels are required if no Parent is selected')
+        self.assertFormError(response, 'form', 'language', 'Language must be valid a ISO-639-2 code')
+
+        # submit again with valid data (no parent, has labels)
+        response = self.url_post('unicef', url, {
+            'question': "Is nausea during pregnancy normal?",
+            'answer': "Yes, especially in the first 3 months",
+            'language': 'eng',
+            'labels': [self.pregnancy.pk]
+        })
+        self.assertEqual(response.status_code, 302)
+        faq1 = FAQ.objects.get(question="Is nausea during pregnancy normal?")
+        self.assertEqual(faq1.org, self.unicef)
+        self.assertEqual(faq1.answer, "Yes, especially in the first 3 months")
+        self.assertEqual(faq1.language, 'eng')
+        self.assertEqual(faq1.parent, None)
+        self.assertEqual(faq1.labels.all()[0], self.pregnancy)
+
+        # submit again with valid data (has parent, no labels)
+        response = self.url_post('unicef', url, {
+            'question': "BNT Question",
+            'answer': "BNT Answer",
+            'language': 'bnt',
+            'parent': self.preg_faq1_eng.pk
+        })
+        self.assertEqual(response.status_code, 302)
+        faq2 = FAQ.objects.get(question="BNT Question")
+        self.assertEqual(faq2.parent, self.preg_faq1_eng)
+        self.assertEqual(faq2.labels.all().count(), 0)
+
+        # submit again with json data (has parent, no labels)
+        response = self.url_post_json('unicef', url, {
+            'question': "ZUL Question",
+            'answer': "ZUL Answer",
+            'language': 'zul',
+            'parent': self.preg_faq1_eng.pk
+        })
+        self.assertEqual(response.status_code, 302)
+        faq2 = FAQ.objects.get(question="ZUL Question")
+        self.assertEqual(faq2.parent, self.preg_faq1_eng)
+        self.assertEqual(faq2.labels.all().count(), 0)
+
+        # submit again with valid data (has parent, wrong labels)
+        response = self.url_post('unicef', url, {
+            'question': "BNT Is nausea during pregnancy normal?",
+            'answer': "BNT Yes, especially in the first 3 months",
+            'language': 'bnt',
+            'parent': faq1.pk,
+            'labels': [self.aids.pk]
+        })
+
+        self.assertEqual(response.status_code, 302)
+        faq3 = FAQ.objects.get(question="BNT Is nausea during pregnancy normal?")
+        self.assertEqual(faq3.parent, faq1)
+        self.assertEqual(faq2.labels.all().count(), 0)
+
+    def test_list(self):
+        url = reverse('msgs.faq_list')
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        response = self.url_get('unicef', url)
+        self.assertEqual(response.status_code, 200)
+
+        # note list below is sorted alphabetically by parent (reversed), then question
+        self.assertEqual(
+            list(response.context['object_list']), [
+                self.tea_faq1_eng,
+                self.preg_faq1_eng,
+                self.preg_faq2_eng,
+                self.preg_faq1_bnt,
+                self.preg_faq1_lug
+            ]
+        )
+
+        # log in as a different org admin
+        self.login(self.norbert)
+        response = self.url_get('nyaruka', url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['object_list']), 0)
+
+    def test_update(self):
+        url = reverse('msgs.faq_update', args=[self.preg_faq1_eng.pk])
+
+        # log in as a non-administrator
+        self.login(self.user1)
+
+        response = self.url_get('unicef', url)
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        response = self.url_get('unicef', url)
+        self.assertEqual(response.status_code, 200)
+
+        # submit with no data
+        response = self.url_post('unicef', url, {})
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response, 'form', 'question', 'This field is required.')
+        self.assertFormError(response, 'form', 'answer', 'This field is required.')
+        self.assertFormError(response, 'form', 'language', 'This field is required.')
+        self.assertFormError(response, 'form', 'labels', 'Labels are required if no Parent is selected')
+
+        # submit again with valid data
+        response = self.url_post('unicef', url, {
+            'question': "Can I drink tea if I'm pregnant?",
+            'answer': "Try to keep to caffeine-free tea",
+            'language': 'eng',
+            'labels': [self.pregnancy.pk, self.tea.pk]
+        })
+
+        self.assertEqual(response.status_code, 302)
+
+        self.preg_faq1_eng.refresh_from_db()
+        self.assertEqual(self.preg_faq1_eng.question, "Can I drink tea if I'm pregnant?")
+        self.assertEqual(self.preg_faq1_eng.org, self.unicef)
+        self.assertEqual(self.preg_faq1_eng.answer, "Try to keep to caffeine-free tea")
+        self.assertEqual(self.preg_faq1_eng.language, 'eng')
+        self.assertEqual(len(self.preg_faq1_eng.labels.all()), 2)
+
+        # submit as json
+        response = self.url_post_json('unicef', url, {
+            'question': "Can I drink coffee if I'm pregnant?",
+            'answer': "Try to keep to caffeine-free coffee",
+            'language': 'eng',
+            'labels': [self.pregnancy.pk, self.tea.pk]
+        })
+
+        self.assertEqual(response.status_code, 302)
+
+        self.preg_faq1_eng.refresh_from_db()
+        self.assertEqual(self.preg_faq1_eng.question, "Can I drink coffee if I'm pregnant?")
+        self.assertEqual(self.preg_faq1_eng.org, self.unicef)
+        self.assertEqual(self.preg_faq1_eng.answer, "Try to keep to caffeine-free coffee")
+        self.assertEqual(self.preg_faq1_eng.language, 'eng')
+        self.assertEqual(len(self.preg_faq1_eng.labels.all()), 2)
+
+        # view form again for recently edited label
+        response = self.url_get('unicef', url)
+        self.assertEqual(response.status_code, 200)
+
+        # test update with different org admin
+        self.login(self.norbert)
+        response = self.url_post('unicef', url, {
+            'question': "Can I drink tea if I'm pregnant?",
+            'answer': "Try to keep to caffeine-free tea",
+            'language': 'eng',
+            'labels': [self.pregnancy.pk, self.tea.pk]
+        })
+        self.assertLoginRedirect(response, 'unicef', url)
+
+    def test_delete(self):
+        preg_faq1_eng_pk = self.preg_faq1_eng.pk
+        preg_faq1_lug_pk = self.preg_faq1_lug.pk
+        preg_faq1_bnt_pk = self.preg_faq1_bnt.pk
+
+        url = reverse('msgs.faq_delete', args=[preg_faq1_eng_pk])
+
+        # log in as a non-administrator
+        self.login(self.user1)
+
+        response = self.url_get('unicef', url)
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        response = self.url_post('unicef', url)
+        self.assertEqual(response.status_code, 204)
+
+        # check preg_faq1_eng is deleted
+        with self.assertRaises(FAQ.DoesNotExist):
+            FAQ.objects.get(pk=preg_faq1_eng_pk)
+
+        # check translations are also deleted when parent is deleted
+        with self.assertRaises(FAQ.DoesNotExist):
+            FAQ.objects.get(pk=preg_faq1_lug_pk)
+        with self.assertRaises(FAQ.DoesNotExist):
+            FAQ.objects.get(pk=preg_faq1_bnt_pk)
+
+    def test_read(self):
+        preg_faq1_pk = self.preg_faq1_eng.pk
+        url = reverse('msgs.faq_read', args=[preg_faq1_pk])
+
+        # log in as a non-administrator
+        self.login(self.user1)
+
+        response = self.url_get('unicef', url)
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        response = self.url_get('unicef', url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_search(self):
+        url = reverse('msgs.faq_search')
+
+        # try unauthenticated
+        response = self.url_get('unicef', url, {})
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as a non-administrator
+        self.login(self.user1)
+
+        response = self.url_get('unicef', url, {})
+        # should have 4 results as one is label restricted
+        self.assertEqual(len(response.json['results']), 4)
+
+        # log in as an administrator
+        self.login(self.admin)
+
+        # request FAQs - no filtering
+        response = self.url_get('unicef', url, {})
+        # should show all FAQs
+        self.assertEqual(len(response.json['results']), 5)
+
+        # request FAQs - filter on language
+        response = self.url_get('unicef', url, {'language': 'eng'})
+        self.assertEqual(len(response.json['results']), 3)
+
+        # request FAQs - filter on label
+        response = self.url_get('unicef', url, {'label': self.pregnancy.pk})
+        self.assertEqual(len(response.json['results']), 4)
+
+        # request FAQs - filter on language, label
+        response = self.url_get('unicef', url, {
+            'label': self.pregnancy.pk,
+            'language': 'eng',
+        })
+        self.assertEqual(len(response.json['results']), 2)
+
+        # request FAQs - filter on language, label, text
+        response = self.url_get('unicef', url, {
+            'label': self.pregnancy.pk,
+            'language': 'eng',
+            'text': "hiv transfer"
+        })
+        self.assertEqual(len(response.json['results']), 1)
+        self.assertEqual(response.json['results'][0]['question'], "How do I prevent HIV transfer to my baby?")
+        self.assertEqual(response.json['results'][0]['labels'], [
+            {
+                'id': self.aids.pk,
+                'name': "AIDS",
+                'counts': {'archived': 0, 'inbox': 0},
+                'description': 'Messages about AIDS',
+                'synced': True
+            },
+            {
+                'id': self.pregnancy.pk, 'name': "Pregnancy",
+                'counts': {'archived': 0, 'inbox': 0},
+                'description': 'Messages about pregnancy',
+                'synced': True
+            }
+        ])
+
+        # request FAQs - filter on language, label, text - no results
+        response = self.url_get('unicef', url, {
+            'label': self.pregnancy.pk,
+            'language': 'eng',
+            'text': "hiv and tea"
+        })
+        self.assertEqual(len(response.json['results']), 0)
+
+        # request FAQs - filter on text answer
+        response = self.url_get('unicef', url, {
+            'text': "arv"
+        })
+        self.assertEqual(len(response.json['results']), 1)
+
+        # request FAQs - filter on label, should show both parent & translation
+        response = self.url_post('unicef', reverse('msgs.faq_create'), {
+            'question': "BNT Question with no labels",
+            'answer': "BNT Answer with no labels",
+            'language': 'bnt',
+            'parent': self.preg_faq1_eng.pk
+        })
+        self.assertEqual(response.status_code, 302)
+        response = self.url_get('unicef', url, {'label': self.pregnancy.pk})
+        self.assertEqual(len(response.json['results']), 5)
+
+    def test_language(self):
+        url = reverse('msgs.faq_languages')
+
+        # try unauthenticated
+        response = self.url_get('unicef', url, {})
+        self.assertLoginRedirect(response, 'unicef', url)
+
+        # log in as a non-administrator
+        self.login(self.user1)
+        response = self.url_get('unicef', url, {})
+        # should have 4 results as one is label restricted
+        self.assertEqual(len(response.json['results']), 3)
+        self.assertEqual(response.json['results'], [
+            {'code': 'bnt', 'name': 'Bantu'},
+            {'code': 'eng', 'name': 'English'},
+            {'code': 'lug', 'name': 'Ganda'}
+        ])
+
+
+class FaqImportTest(BaseCasesTest):
+    def create_importtask(self, user, filename):
+        task = ImportTask.objects.create(
+            created_by=user,
+            modified_by=user,
+            csv_file='test_imports/%s' % filename,
+            model_class="casepro.msgs.models.FAQ",
+            import_log="")
+        return task
+
+    def test_good_imports(self):
+        # store situation before import
+        num_faqs = FAQ.objects.all().count()
+        num_faqs_translations = FAQ.objects.filter(parent__isnull=False).count()
+        num_faqs_parents = FAQ.objects.filter(parent__isnull=True).count()
+        num_faqs_parents_no_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=True).count()
+        num_faqs_parents_have_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=False).count()
+
+        # create the importtask object
+        importtask = self.create_importtask(self.admin, 'faq_good_import.csv')
+
+        # check task_id is None at this point
+        self.assertEqual(importtask.task_id, None)
+
+        # run the import
+        result = faq_csv_import(self.unicef, importtask.pk)
+
+        # check situation after import
+        self.assertEqual(FAQ.objects.all().count(), num_faqs + 9)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations + 6)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations + 0)
+
+        # check task_id is not in returned result since we're calling directly, not using .delay
+        self.assertIsNone(result.task_id)
+
+        # test running the same import again creates duplicates of the FAQs, but not the languages
+        # run the import
+        result = faq_csv_import(self.unicef, importtask.pk)
+
+        # check situation after second import
+        self.assertEqual(FAQ.objects.all().count(), num_faqs + 9 + 9)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations + 6 + 6)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents + 3 + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations + 3 + 3)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations + 0 + 0)
+
+    def test_bad_imports(self):
+        # store situation before import
+        num_faqs = FAQ.objects.all().count()
+        num_faqs_translations = FAQ.objects.filter(parent__isnull=False).count()
+        num_faqs_parents = FAQ.objects.filter(parent__isnull=True).count()
+        num_faqs_parents_no_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=True).count()
+        num_faqs_parents_have_translations = FAQ.objects.filter(parent__isnull=True).exclude(
+            translations__isnull=False).count()
+
+        # Import problem: labels don't match existing labels
+        # create the importtask object
+        importtask = self.create_importtask(self.admin, 'faq_bad_import_labels.csv')
+        # run the import, expect an exception
+        with self.assertRaises(Label.DoesNotExist):
+            faq_csv_import(self.unicef, importtask.pk).get()
+
+        # check situation after import - nothing should have changed
+        self.assertEqual(FAQ.objects.all().count(), num_faqs)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=False).count(), num_faqs_translations)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).count(), num_faqs_parents)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=True).count(),
+                         num_faqs_parents_no_translations)
+        self.assertEqual(FAQ.objects.filter(parent__isnull=True).exclude(translations__isnull=False).count(),
+                         num_faqs_parents_have_translations)
 
 
 class MessageTest(BaseCasesTest):
@@ -685,7 +1116,7 @@ class MessageTest(BaseCasesTest):
 
         self.assertEqual(msg.as_json(), {
             'id': msg.backend_id,
-            'contact': {'id': self.ann.pk, 'name': "Ann"},
+            'contact': {'id': self.ann.pk, 'display': "Ann"},
             'text': "Hello",
             'time': msg.created_on,
             'labels': [{'id': self.aids.pk, 'name': "AIDS"}],
@@ -744,7 +1175,7 @@ class MessageCRUDLTest(BaseCasesTest):
         self.assertEqual(len(response.json['results']), 3)
         self.assertEqual(response.json['results'][0]['id'], 103)
         self.assertEqual(response.json['results'][1]['id'], 102)
-        self.assertEqual(response.json['results'][1]['contact'], {'id': self.bob.pk, 'name': "Bob"})
+        self.assertEqual(response.json['results'][1]['contact'], {'id': self.bob.pk, 'display': "Bob"})
         self.assertEqual(response.json['results'][1]['text'], "I ♡ RapidPro")
         self.assertEqual(response.json['results'][1]['labels'], [{'id': self.pregnancy.pk, 'name': "Pregnancy"}])
         self.assertEqual(response.json['results'][2]['id'], 101)
@@ -757,7 +1188,7 @@ class MessageCRUDLTest(BaseCasesTest):
 
         self.assertEqual(len(response.json['results']), 2)
         self.assertEqual(response.json['results'][0]['id'], 105)
-        self.assertEqual(response.json['results'][0]['contact'], {'id': cat.pk, 'name': "Cat"})
+        self.assertEqual(response.json['results'][0]['contact'], {'id': cat.pk, 'display': "Cat"})
         self.assertEqual(response.json['results'][0]['text'], "AIDS??")
         self.assertEqual(response.json['results'][0]['labels'], [{'id': self.aids.pk, 'name': "AIDS"}])
         self.assertEqual(response.json['results'][0]['case'], {
@@ -1112,7 +1543,7 @@ class OutgoingTest(BaseCasesTest):
 
         self.assertEqual(outgoing.as_json(), {
             'id': outgoing.pk,
-            'contact': {'id': self.ann.pk, 'name': "Ann"},
+            'contact': {'id': self.ann.pk, 'display': "Ann"},
             'urn': None,
             'text': "That's great",
             'time': outgoing.created_on,
@@ -1147,7 +1578,7 @@ class OutgoingCRUDLTest(BaseCasesTest):
         self.assertEqual(response.json['results'], [
             {
                 'id': out2.pk,
-                'contact': {'id': self.ann.pk, 'name': "Ann"},
+                'contact': {'id': self.ann.pk, 'display': "Ann"},
                 'urn': None,
                 'text': "Hello 2",
                 'case': None,
@@ -1156,7 +1587,7 @@ class OutgoingCRUDLTest(BaseCasesTest):
             },
             {
                 'id': out1.pk,
-                'contact': {'id': self.ann.pk, 'name': "Ann"},
+                'contact': {'id': self.ann.pk, 'display': "Ann"},
                 'urn': None,
                 'text': "Hello 1",
                 'case': None,
@@ -1172,7 +1603,7 @@ class OutgoingCRUDLTest(BaseCasesTest):
         self.assertEqual(response.json['results'], [
             {
                 'id': out2.pk,
-                'contact': {'id': self.ann.pk, 'name': "Ann"},
+                'contact': {'id': self.ann.pk, 'display': "Ann"},
                 'urn': None,
                 'text': "Hello 2",
                 'case': None,
@@ -1207,7 +1638,7 @@ class OutgoingCRUDLTest(BaseCasesTest):
         self.assertEqual(response.json['results'], [
             {
                 'id': out2.pk,
-                'contact': {'id': self.bob.pk, 'name': "Bob"},
+                'contact': {'id': self.bob.pk, 'display': "Bob"},
                 'urn': None,
                 'text': "Hello 2",
                 'case': None,
@@ -1222,7 +1653,7 @@ class OutgoingCRUDLTest(BaseCasesTest):
             },
             {
                 'id': out1.pk,
-                'contact': {'id': self.ann.pk, 'name': "Ann"},
+                'contact': {'id': self.ann.pk, 'display': "Ann"},
                 'urn': None,
                 'text': "Hello 1",
                 'case': {'id': case.pk, 'assignee': {'id': self.moh.pk, 'name': "MOH"}, 'user_assignee': None},

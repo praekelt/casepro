@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import json
+import pytz
 
 from dash.test import DashTest
 from datetime import datetime, date, time
@@ -14,7 +15,7 @@ from xlrd.sheet import XL_CELL_DATE
 from casepro.backend import NoopBackend
 from casepro.cases.models import Case, Partner
 from casepro.contacts.models import Contact, Group, Field
-from casepro.msgs.models import Label, Message, Outgoing
+from casepro.msgs.models import Label, FAQ, Message, Outgoing
 from casepro.profiles.models import Profile, ROLE_ANALYST, ROLE_MANAGER
 from casepro.rules.models import ContainsTest, Quantifier, LabelAction, Rule
 
@@ -37,8 +38,8 @@ class BaseCasesTest(DashTest):
         settings.SITE_ORGS_STORAGE_ROOT = 'test_orgs'
 
         # some orgs
-        self.unicef = self.create_org("UNICEF", timezone="Africa/Kampala", subdomain="unicef")
-        self.nyaruka = self.create_org("Nyaruka", timezone="Africa/Kigali", subdomain="nyaruka")
+        self.unicef = self.create_org("UNICEF", timezone=pytz.timezone("Africa/Kampala"), subdomain="unicef")
+        self.nyaruka = self.create_org("Nyaruka", timezone=pytz.timezone("Africa/Kigali"), subdomain="nyaruka")
 
         # some admins for those orgs
         self.admin = self.create_admin(self.unicef, "Kidus", "kidus@unicef.org")
@@ -50,6 +51,18 @@ class BaseCasesTest(DashTest):
                                            ["pregnant", "pregnancy"])
         self.tea = self.create_label(self.unicef, None, "Tea", 'Messages about tea', ["tea", "chai"], is_synced=False)
         self.code = self.create_label(self.nyaruka, "L-101", "Code", 'Messages about code', ["java", "python", "go"])
+
+        # some message faqs
+        self.preg_faq1_eng = self.create_faq(self.unicef, "How do I know I'm pregnant?", "Do a pregnancy test.",
+                                             "eng", None, [self.pregnancy])
+        self.preg_faq1_bnt = self.create_faq(self.unicef, "BTN How do I know I'm pregnant?", "BTN Do a pregnancy test.",
+                                             "bnt", self.preg_faq1_eng, [])
+        self.preg_faq1_lug = self.create_faq(self.unicef, "LUG How do I know I'm pregnant?", "LUG Do a pregnancy test.",
+                                             "lug", self.preg_faq1_eng, [])
+        self.preg_faq2_eng = self.create_faq(self.unicef, "How do I prevent HIV transfer to my baby?", "Take ARVs.",
+                                             "eng", None, [self.pregnancy, self.aids])
+        self.tea_faq1_eng = self.create_faq(self.unicef, "Does tea contain caffeine?", "It varies - black tea does.",
+                                            "eng", None, [self.tea])
 
         # some partners
         self.moh = self.create_partner(self.unicef, "MOH", "Ministry of Health", None,
@@ -98,6 +111,10 @@ class BaseCasesTest(DashTest):
 
     def create_rule(self, org, tests, actions):
         return Rule.create(org, tests, actions)
+
+    def create_faq(self, org, question, answer, language, parent, labels=(), **kwargs):
+        faq = FAQ.create(org, question, answer, language, parent, labels)
+        return faq
 
     def create_contact(self, org, uuid, name, groups=(), fields=None, is_stub=False):
         contact = Contact.objects.create(org=org, uuid=uuid, name=name, is_stub=is_stub, fields=fields, language="eng")

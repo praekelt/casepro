@@ -53,7 +53,8 @@ SITE_ALLOW_NO_ORG = ('orgs_ext.org_create', 'orgs_ext.org_update', 'orgs_ext.org
 SITE_ORGS_STORAGE_ROOT = 'orgs'
 SITE_EXTERNAL_CONTACT_URL = 'http://localhost:8001/contact/read/%s/'
 SITE_BACKEND = 'casepro.backend.NoopBackend'
-SITE_ANON_CONTACTS = False
+SITE_HIDE_CONTACT_FIELDS = []  # Listed fields should not be displayed
+SITE_CONTACT_DISPLAY = "name"  # Overrules SITE_HIDE_CONTACT_FIELDS Options: 'name', 'uuid' or 'urns'
 SITE_ALLOW_CASE_WITHOUT_MESSAGE = True
 
 # junebug configuration
@@ -279,6 +280,7 @@ TEMPLATES = [
                 'casepro.cases.context_processors.sentry_dsn',
                 'casepro.cases.context_processors.server_time',
                 'casepro.profiles.context_processors.user',
+                'casepro.profiles.context_processors.user_must_reply_with_faq',
             ],
             'loaders': [
                 'dash.utils.haml.HamlFilesystemLoader',
@@ -306,6 +308,8 @@ PERMISSIONS = {
     'orgs.org': ('create', 'update', 'list', 'home', 'edit', 'inbox', 'charts'),
 
     'msgs.label': ('create', 'update', 'read', 'delete', 'list'),
+
+    'msgs.faq': ('create', 'read', 'update', 'delete', 'list', 'search', 'import', 'languages'),
 
     'msgs.message': ('action', 'bulk_reply', 'forward', 'label', 'history', 'search', 'unlabelled'),
 
@@ -339,7 +343,10 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
         'orgs.org_edit',
 
+        'csv_imports.importtask.*',
+
         'msgs.label.*',
+        'msgs.faq.*',
         'msgs.message.*',
         'msgs.messageexport.*',
         'msgs.outgoing.*',
@@ -366,6 +373,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_charts',
 
         'msgs.label_read',
+        'msgs.faq_search',
+        'msgs.faq_languages',
         'msgs.message_action',
         'msgs.message_bulk_reply',
         'msgs.message_forward',
