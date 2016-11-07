@@ -383,7 +383,19 @@ class FaqCRUDLTest(BaseCasesTest):
         self.assertEqual(response.status_code, 302)
         faq2 = FAQ.objects.get(question="BNT Question")
         self.assertEqual(faq2.parent, self.preg_faq1_eng)
-        self.assertEqual(faq2.labels.all()[0], self.pregnancy)
+        self.assertEqual(faq2.labels.all().count(), 0)
+
+        # submit again with json data (has parent, no labels)
+        response = self.url_post_json('unicef', url, {
+            'question': "ZUL Question",
+            'answer': "ZUL Answer",
+            'language': 'zul',
+            'parent': self.preg_faq1_eng.pk
+        })
+        self.assertEqual(response.status_code, 302)
+        faq2 = FAQ.objects.get(question="ZUL Question")
+        self.assertEqual(faq2.parent, self.preg_faq1_eng)
+        self.assertEqual(faq2.labels.all().count(), 0)
 
         # submit again with valid data (has parent, wrong labels)
         response = self.url_post('unicef', url, {
@@ -397,7 +409,7 @@ class FaqCRUDLTest(BaseCasesTest):
         self.assertEqual(response.status_code, 302)
         faq3 = FAQ.objects.get(question="BNT Is nausea during pregnancy normal?")
         self.assertEqual(faq3.parent, faq1)
-        self.assertEqual(faq3.labels.all()[0], self.pregnancy)
+        self.assertEqual(faq2.labels.all().count(), 0)
 
     def test_list(self):
         url = reverse('msgs.faq_list')
@@ -462,6 +474,23 @@ class FaqCRUDLTest(BaseCasesTest):
         self.assertEqual(self.preg_faq1_eng.question, "Can I drink tea if I'm pregnant?")
         self.assertEqual(self.preg_faq1_eng.org, self.unicef)
         self.assertEqual(self.preg_faq1_eng.answer, "Try to keep to caffeine-free tea")
+        self.assertEqual(self.preg_faq1_eng.language, 'eng')
+        self.assertEqual(len(self.preg_faq1_eng.labels.all()), 2)
+
+        # submit as json
+        response = self.url_post_json('unicef', url, {
+            'question': "Can I drink coffee if I'm pregnant?",
+            'answer': "Try to keep to caffeine-free coffee",
+            'language': 'eng',
+            'labels': [self.pregnancy.pk, self.tea.pk]
+        })
+
+        self.assertEqual(response.status_code, 302)
+
+        self.preg_faq1_eng.refresh_from_db()
+        self.assertEqual(self.preg_faq1_eng.question, "Can I drink coffee if I'm pregnant?")
+        self.assertEqual(self.preg_faq1_eng.org, self.unicef)
+        self.assertEqual(self.preg_faq1_eng.answer, "Try to keep to caffeine-free coffee")
         self.assertEqual(self.preg_faq1_eng.language, 'eng')
         self.assertEqual(len(self.preg_faq1_eng.labels.all()), 2)
 
@@ -598,6 +627,17 @@ class FaqCRUDLTest(BaseCasesTest):
             'text': "arv"
         })
         self.assertEqual(len(response.json['results']), 1)
+
+        # request FAQs - filter on label, should show both parent & translation
+        response = self.url_post('unicef', reverse('msgs.faq_create'), {
+            'question': "BNT Question with no labels",
+            'answer': "BNT Answer with no labels",
+            'language': 'bnt',
+            'parent': self.preg_faq1_eng.pk
+        })
+        self.assertEqual(response.status_code, 302)
+        response = self.url_get('unicef', url, {'label': self.pregnancy.pk})
+        self.assertEqual(len(response.json['results']), 5)
 
     def test_language(self):
         url = reverse('msgs.faq_languages')
