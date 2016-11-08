@@ -99,6 +99,8 @@ PODS = [{
                           'http://registration.familyconnect.seed.p16n.org/api/v1/registrations/'),
     'token': os.environ.get('REGISTRATION_AUTH_TOKEN',
                             'replace-with-auth-token'),
+    'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
+                                           'mother_id'),
     'field_mapping': [
         {"field": "last_period_date", "field_name": "Date of last period"},
         {"field": "language", "field_name": "Language Preference"},
