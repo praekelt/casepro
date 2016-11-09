@@ -14,16 +14,12 @@ PODS = [{
     'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
                                            'registrant_id'),
     'field_mapping': [
-        {"field": "reg_type", "field_name": "Registration Type"},
+        {"field": "msisdn_registrant", "field_name": "Cell Number"},
         {"field": "language", "field_name": "Language Preference"},
-        {"field": "id_type", "field_name": "ID Type"},
-        {"field": "sa_id_no", "field_name": "ID Number"},
+        {"field": "faccode", "field_name": "Facility Code"},
+        {"field": "reg_type", "field_name": "Registration Type"},
         {"field": "mom_dob", "field_name": "Mother's Date of Birth"},
-        {"field": "consent", "field_name": "Consent"},
-        {"field": "operator_id", "field_name": "Operator ID"},
-        {"field": "registrant_id", "field_name": "Registrant ID"},
-        {"field": "msisdn_registrant", "field_name": "MSISDN of Registrant"},
-        {"field": "msisdn_device", "field_name": "MSISDN of Device"},
+        {"field": "edd", "field_name": "Expected Due Date"},
     ]
 }, {
     'label': "family_connect_subscription_pod",
