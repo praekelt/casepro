@@ -39,6 +39,9 @@ JUNEBUG_API_ROOT = os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/')
 JUNEBUG_CHANNEL_ID = os.environ.get('JUNEBUG_CHANNEL_ID', 'replace-me')
 JUNEBUG_FROM_ADDRESS = os.environ.get('JUNEBUG_FROM_ADDRESS', None)
 
+JUNEBUG_HUB_BASE_URL = os.environ.get('JUNEBUG_HUB_BASE_URL', None)
+JUNEBUG_HUB_AUTH_TOKEN = os.environ.get('JUNEBUG_HUB_AUTH_TOKEN', None)
+
 SITE_BACKEND = 'casepro.backend.junebug.JunebugBackend'
 
 # identity store configuration
