@@ -21,7 +21,7 @@ from casepro.msgs.models import Label, Message, MessageFolder, OutgoingFolder
 from casepro.pods import registry as pod_registry
 from casepro.statistics.models import DailyCount, DailySecondTotalCount
 from casepro.utils import json_encode, datetime_to_microseconds, microseconds_to_datetime, JSONEncoder, str_to_bool
-from casepro.utils import month_range, humanise_seconds
+from casepro.utils import month_range, humanize_seconds
 from casepro.utils.export import BaseDownloadView
 
 from . import MAX_MESSAGE_CHARS
@@ -431,6 +431,12 @@ class PartnerCRUDL(SmartCRUDL):
                     partners, DailyCount.TYPE_REPLIES, *month_range(0)).scope_totals()
                 replies_last_month = DailyCount.get_by_partner(
                     partners, DailyCount.TYPE_REPLIES, *month_range(-1)).scope_totals()
+                average_referral_response_time_this_month = DailySecondTotalCount.get_by_partner(
+                    partners, DailySecondTotalCount.TYPE_TILL_REPLIED, *month_range(0))
+                average_referral_response_time_this_month = average_referral_response_time_this_month.scope_averages()
+                average_closed_this_month = DailySecondTotalCount.get_by_partner(
+                    partners, DailySecondTotalCount.TYPE_TILL_CLOSED, *month_range(0))
+                average_closed_this_month = average_closed_this_month.scope_averages()
 
                 # get cases statistics
                 cases_total = DailyCount.get_by_partner(
@@ -439,12 +445,6 @@ class PartnerCRUDL(SmartCRUDL):
                     partners, DailyCount.TYPE_CASE_OPENED, *month_range(0)).scope_totals()
                 cases_closed_this_month = DailyCount.get_by_partner(
                     partners, DailyCount.TYPE_CASE_CLOSED, *month_range(0)).scope_totals()
-                average_replied = DailySecondTotalCount.get_by_partner(partners,
-                                                                       DailySecondTotalCount.TYPE_TILL_REPLIED)
-                average_replied = average_replied.scope_averages()
-                average_closed = DailySecondTotalCount.get_by_partner(partners,
-                                                                      DailySecondTotalCount.TYPE_TILL_CLOSED)
-                average_closed = average_closed.scope_averages()
 
             def as_json(partner):
                 obj = partner.as_json()
@@ -454,13 +454,14 @@ class PartnerCRUDL(SmartCRUDL):
                             'this_month': replies_this_month.get(partner, 0),
                             'last_month': replies_last_month.get(partner, 0),
                             'total': replies_total.get(partner, 0),
-                            'average': humanise_seconds(average_replied.get(partner, 0))
+                            'average_referral_response_time_this_month': humanize_seconds(
+                                average_referral_response_time_this_month.get(partner, 0))
                         },
                         'cases': {
+                            'average_closed_this_month': humanize_seconds(average_closed_this_month.get(partner, 0)),
                             'opened_this_month': cases_opened_this_month.get(partner, 0),
                             'closed_this_month': cases_closed_this_month.get(partner, 0),
-                            'total': cases_total.get(partner, 0),
-                            'average_closed': humanise_seconds(average_closed.get(partner, 0))
+                            'total': cases_total.get(partner, 0)
                         }
                     })
                 return obj

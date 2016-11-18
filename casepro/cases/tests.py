@@ -1435,13 +1435,29 @@ class PartnerCRUDLTest(BaseCasesTest):
         self.assertEqual(response.json, {'results': [
             {
                 'id': self.moh.pk, 'name': "MOH", 'restricted': True,
-                'replies': {'average': '0s', 'last_month': 0, 'this_month': 0, 'total': 0},
-                'cases': {'opened_this_month': 0, 'closed_this_month': 0, 'total': 0, 'average_closed': '0s'},
+                'replies': {
+                    'average_referral_response_time_this_month': u'0\xa0minutes',
+                    'last_month': 0,
+                    'this_month': 0,
+                    'total': 0},
+                'cases': {
+                    'average_closed_this_month': u'0\xa0minutes',
+                    'opened_this_month': 0,
+                    'closed_this_month': 0,
+                    'total': 0},
             },
             {
                 'id': self.who.pk, 'name': "WHO", 'restricted': True,
-                'replies': {'average': '0s', 'last_month': 0, 'this_month': 0, 'total': 0},
-                'cases': {'opened_this_month': 0, 'closed_this_month': 0, 'total': 0, 'average_closed': '0s'},
+                'replies': {
+                    'average_referral_response_time_this_month': u'0\xa0minutes',
+                    'last_month': 0,
+                    'this_month': 0,
+                    'total': 0},
+                'cases': {
+                    'average_closed_this_month': u'0\xa0minutes',
+                    'opened_this_month': 0,
+                    'closed_this_month': 0,
+                    'total': 0},
             }
         ]})
 

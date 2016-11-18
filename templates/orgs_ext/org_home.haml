@@ -81,9 +81,9 @@
             %th
               - trans "Total cases opened"
             %th
-              - trans "Average time to reply"
+              - trans "Average referral response time this month"
             %th
-              - trans "Average time to close"
+              - trans "Average time to close this month"
           %tbody
             %tr{ ng-repeat:"partner in partners" }
               %td
@@ -102,9 +102,9 @@
               %td
                 [[ partner.cases.total ]]
               %td
-                [[ partner.replies.average ]]
+                [[ partner.replies.average_referral_response_time_this_month ]]
               %td
-                [[ partner.cases.average_closed ]]
+                [[ partner.cases.average_closed_this_month ]]
         .none{ ng-if:"!partners" }
           - trans "None"
 

@@ -54,7 +54,7 @@ def remove_totals_for_cases(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('statistics', '0008_dailysecondtotalcount'),
+        ('statistics', '0007_populate_label_totals'),
         ('cases', '0042_auto_20160805_1003'),
     ]
 

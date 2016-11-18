@@ -312,12 +312,20 @@ class DailyCountExportTest(BaseStatsTest):
 
         export = DailyCountExport.objects.get()
         workbook = self.openWorkbook(export.filename)
-        (replies_sheet, cases_opened_sheet, cases_closed_sheet, ave_sheet, ave_closed_sheet) = workbook.sheets()
+        (replies_sheet, ave_reply_sheet, ave_closed_sheet, cases_opened_sheet, cases_closed_sheet) = workbook.sheets()
 
         self.assertEqual(replies_sheet.nrows, 32)
         self.assertExcelRow(replies_sheet, 0, ["Date", "MOH", "WHO"])
         self.assertExcelRow(replies_sheet, 1, [d1, 1, 0], tz=tz)
         self.assertExcelRow(replies_sheet, 15, [d2, 0, 1], tz=tz)
+
+        self.assertExcelRow(ave_reply_sheet, 0, ["Date", "MOH", "WHO"])
+        self.assertExcelRow(ave_reply_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(ave_reply_sheet, 15, [d2, 0, 0], tz=tz)
+
+        self.assertExcelRow(ave_closed_sheet, 0, ["Date", "MOH", "WHO"])
+        self.assertExcelRow(ave_closed_sheet, 1, [d1, 0, 0], tz=tz)
+        self.assertExcelRow(ave_closed_sheet, 15, [d2, 0, 0], tz=tz)
 
         self.assertExcelRow(cases_opened_sheet, 0, ["Date", "MOH", "WHO"])
         self.assertExcelRow(cases_opened_sheet, 1, [d1, 1, 0], tz=tz)
@@ -506,28 +514,30 @@ class SecondTotalCountsTest(BaseStatsTest):
 
         self.assertEqual(DailySecondTotalCount.get_by_org([self.unicef], 'A').total(), 4)
         self.assertEqual(DailySecondTotalCount.get_by_org([self.unicef], 'A').seconds(), 4)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').total(), 2)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').seconds(), 2)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').average(), 1)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').total(), 2)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').seconds(), 2)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').average(), 1)
+
+        # First reply only counted for re-assignments, immediate replies NOT counteds
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').total(), 0)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').seconds(), 0)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').average(), 0)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').total(), 0)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').seconds(), 0)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.who], 'A').average(), 0)
 
         # check a reassigned case response
         case5.reassign(self.user3, self.moh)
         self.create_outgoing(self.unicef, self.user1, 201, Outgoing.CASE_REPLY, "Good question", self.ann, case=case5)
         self.assertEqual(DailySecondTotalCount.get_by_org([self.unicef], 'A').total(), 5)
         self.assertEqual(DailySecondTotalCount.get_by_org([self.unicef], 'A').seconds(), 5)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').total(), 3)
-        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').seconds(), 3)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').total(), 1)
+        self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').seconds(), 1)
         self.assertEqual(DailySecondTotalCount.get_by_partner([self.moh], 'A').average(), 1)
 
         # check empty partner metrics
         self.assertEqual(DailySecondTotalCount.get_by_partner([self.klab], 'A').average(), 0)
 
-        self.assertEqual(DailySecondTotalCount.objects.count(), 10)
+        self.assertEqual(DailySecondTotalCount.objects.count(), 6)
         squash_counts()
-        self.assertEqual(DailySecondTotalCount.objects.count(), 3)
+        self.assertEqual(DailySecondTotalCount.objects.count(), 2)
 
     def test_case_closed_counts(self):
         msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
