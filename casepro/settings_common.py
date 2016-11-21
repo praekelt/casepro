@@ -290,7 +290,6 @@ TEMPLATES = [
                 'casepro.cases.context_processors.sentry_dsn',
                 'casepro.cases.context_processors.server_time',
                 'casepro.profiles.context_processors.user',
-                'casepro.profiles.context_processors.user_must_reply_with_faq',
             ],
             'loaders': [
                 'dash.utils.haml.HamlFilesystemLoader',
@@ -421,6 +420,8 @@ GROUP_PERMISSIONS = {
         'orgs.org_inbox',
         'orgs.org_charts',
 
+        'msgs.faq_search',
+        'msgs.faq_languages',
         'msgs.label_read',
         'msgs.message_action',
         'msgs.message_bulk_reply',
