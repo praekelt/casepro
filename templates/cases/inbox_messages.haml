@@ -139,7 +139,7 @@
             %i.glyphicon.glyphicon-flag
         .message-time
           <cp-date time="item.time" />
-        .message-contact
+        .{ class:"{% if site_contact_display == 'urns' %}message-contact-urns{% else %}message-contact-default{% endif %}" }
           %a{ ng-click:"activateContact(item.contact)" }><
             <cp-contact contact="item.contact" fields="fields">
         .message-text
@@ -202,9 +202,13 @@
       float: left;
       width: 50px;
     }
-    .message-contact {
+    .message-contact-default {
       float: left;
       margin-right: 10px;
+    }
+    .message-contact-urns {
+      float: left;
+      width: 130px;
     }
     .message-actions input[type="checkbox"] {
       width: auto;
