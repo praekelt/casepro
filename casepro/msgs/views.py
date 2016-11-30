@@ -188,7 +188,7 @@ class MessageCRUDL(SmartCRUDL):
 
             search = self.derive_search()
             messages = Message.search(org, user, search)
-            paginator = LazyPaginator(messages, per_page=50)
+            paginator = LazyPaginator(messages, per_page=2)
 
             context['object_list'] = paginator.page(page)
             context['has_more'] = paginator.num_pages > page

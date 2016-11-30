@@ -226,6 +226,10 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.searchFields = $scope.searchFieldDefaults()
     $scope.activeSearch = $scope.buildSearch()
 
+    $scope.pollBusy = false
+    $scope.lastPollTime = new Date()
+    $interval($scope.poll, 5000)
+
     $scope.$on('activeLabelChange', () ->
       $scope.onResetSearch()
       $scope.setAdvancedSearch(false)
@@ -234,6 +238,43 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       $scope.onResetSearch()
       $scope.setAdvancedSearch(false)
     )
+
+  $scope.poll = ->
+    console.log "POLL"
+    console.log $scope.lastPollTime
+    # a poll is already in progress, skip this one
+    if $scope.pollBusy
+      return
+
+    # set after param so we fetch everything up until the last item we currently have
+    # @johan: I'm assuming here that items have timestamps, is this true?
+    if $scope.items.length > 0
+      after = $scope.items[$scope.items.length - 1].time
+    else
+      after = $scope.startTime
+
+    search = angular.extend({}, $scope.activeSearch)
+    search = angular.extend(search, {after: after})
+    before = new Date()
+    page = 1
+
+    $scope.pollBusy = true
+
+    items = []
+    pageNum = 1
+
+    # Note 1: you will need something more elaborate here since fetchOld()
+    # returns a promise. This is just psuedocode, let me know if you need help
+    # with looping async things. Here, 'await' means wait for promise to resolve
+    # Note 2: if there is a better way of determining whether there is a next
+    # page from what the api gives us, we should use it
+    # for i in range(1, $scope.oldItemsPage)
+    #   chunk = await MessageService.fetchOld(search, before, pageNum++)
+    #   items.push(chunk)
+
+    $scope.lastPollTime = new Date()
+    #$scope.items = items
+    $scope.pollBusy = false
 
   $scope.getItemFilter = () ->
     if $scope.folder == 'inbox'
@@ -269,17 +310,20 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       )
     )
 
+  # $scope.fetchOldItems = (search, startTime, page) ->
+  #   $scope.autoRefresh = ->
+  #     MessageService.fetchOld(search, startTime, page).then((data) ->
+  #       $scope.items = data.results
+  #       $scope.oldItemsMore = data.hasMore
+  #       $scope.oldItemsLoading = false
+  #     )
+  #   $scope.autoRefresh()
+  #   $interval.cancel($scope.autoRefresh)
+  #   $interval($scope.autoRefresh, 10000)
+
   $scope.fetchOldItems = (search, startTime, page) ->
-    $scope.autoRefresh = ->
-      MessageService.fetchOld(search, startTime, page).then((data) ->
-        $scope.items = data.results
-        $scope.oldItemsMore = data.hasMore
-        $scope.oldItemsLoading = false
-      )
-    $scope.autoRefresh()
-    $interval.cancel($scope.autoRefresh)
-    $interval($scope.autoRefresh, 10000)
-    
+   return MessageService.fetchOld(search, startTime, page)
+
   $scope.$on '$destroy', ->
     $interval.cancel($scope.autoRefresh)
 
