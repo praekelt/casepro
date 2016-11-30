@@ -240,41 +240,27 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.poll = ->
+
     console.log "POLL"
     console.log $scope.lastPollTime
     # a poll is already in progress, skip this one
     if $scope.pollBusy
       return
 
-    # set after param so we fetch everything up until the last item we currently have
-    # @johan: I'm assuming here that items have timestamps, is this true?
-    if $scope.items.length > 0
-      after = $scope.items[$scope.items.length - 1].time
-    else
-      after = $scope.startTime
-
-    search = angular.extend({}, $scope.activeSearch)
-    search = angular.extend(search, {after: after})
-    before = new Date()
-    page = 1
-
     $scope.pollBusy = true
 
-    items = []
-    pageNum = 1
+    $scope.activeSearch.after = $scope.lastPollTime
+    $scope.activeSearch.refresh = true
 
-    # Note 1: you will need something more elaborate here since fetchOld()
-    # returns a promise. This is just psuedocode, let me know if you need help
-    # with looping async things. Here, 'await' means wait for promise to resolve
-    # Note 2: if there is a better way of determining whether there is a next
-    # page from what the api gives us, we should use it
-    # for i in range(1, $scope.oldItemsPage)
-    #   chunk = await MessageService.fetchOld(search, before, pageNum++)
-    #   items.push(chunk)
+    console.log $scope.activeSearch
 
-    $scope.lastPollTime = new Date()
-    #$scope.items = items
-    $scope.pollBusy = false
+    console.log 'fetching'
+    MessageService.fetchOld($scope.activeSearch, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
+      $scope.lastPollTime = new Date()
+      $scope.pollBusy = false
+      console.log 'done'
+    )
+
 
   $scope.getItemFilter = () ->
     if $scope.folder == 'inbox'
