@@ -190,10 +190,9 @@ class MessageCRUDL(SmartCRUDL):
 
             # TODO - Not sure about this...
             if self.request.GET.get('last_refresh', None):
+                del search['before']  # this might only be necessary for testing
                 messages = Message.search(org, user, search)
-                for message in messages:
-                    message.text = 'updated message'
-                    break
+
                 context['object_list'] = messages
                 context['has_more'] = False
                 return context

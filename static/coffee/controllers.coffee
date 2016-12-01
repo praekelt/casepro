@@ -251,7 +251,8 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.activeSearch_refresh = $scope.buildSearch()
     #$scope.activeSearch_refresh.after = $scope.lastPollTime
     $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
-    #$scope.activeSearch_refresh.after = $scope.lastPollTime
+    $scope.activeSearch_refresh.after = $scope.lastPollTime
+    $scope.activeSearch_refresh.after - null
 
     console.log $scope.activeSearch_refresh
 
@@ -271,8 +272,12 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
 
           if scope_items.hasOwnProperty(item.id)
               $scope.items[scope_items[item.id]] = item
+          else
+              $scope.items.unshift(item)
 
       console.log 'done'
+    ).catch((error) ->
+      $scope.pollBusy = false
     )
 
 
