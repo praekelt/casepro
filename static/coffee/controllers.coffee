@@ -251,6 +251,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.activeSearch_refresh = $scope.buildSearch()
     #$scope.activeSearch_refresh.after = $scope.lastPollTime
     $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
+    #$scope.activeSearch_refresh.after = $scope.lastPollTime
 
     console.log $scope.activeSearch_refresh
 
@@ -260,13 +261,17 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       $scope.pollBusy = false
       # TODO - over here we need to do something with the data
       # if the item exists in scope we update it and if not we add
-      
-      updateItems = []
-      for item in data.results
-          updateItems.push(item)
 
-      $scope.items = updateItems
-      console.log updateItems
+      scope_items = {}
+      for item, i in $scope.items
+          scope_items[item.id] = i
+
+      for item in data.results
+          console.log item.id
+
+          if scope_items.hasOwnProperty(item.id)
+              $scope.items[scope_items[item.id]] = item
+
       console.log 'done'
     )
 
