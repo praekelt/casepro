@@ -248,16 +248,19 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       return
 
     $scope.pollBusy = true
+    $scope.activeSearch_refresh = $scope.buildSearch()
+    #$scope.activeSearch_refresh.after = $scope.lastPollTime
+    $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
 
-    $scope.activeSearch.after = $scope.lastPollTime
-    $scope.activeSearch.refresh = true
-
-    console.log $scope.activeSearch
+    console.log $scope.activeSearch_refresh
 
     console.log 'fetching'
-    MessageService.fetchOld($scope.activeSearch, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
+    MessageService.fetchOld($scope.activeSearch_refresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
+      # TODO - over here we need to do something with the data
+      # if the item exists in scope we update it and if not we add
+      console.log(data)
       console.log 'done'
     )
 

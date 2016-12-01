@@ -242,6 +242,7 @@ class Message(models.Model):
         group_ids = search.get('groups')
         after = search.get('after')
         before = search.get('before')
+        last_refresh = search.get('last_refresh')
 
         # only show non-deleted handled messages
         queryset = org.incoming_messages.filter(is_active=True, is_handled=True)
@@ -296,6 +297,12 @@ class Message(models.Model):
             queryset = queryset.filter(created_on__gt=after)
         if before:
             queryset = queryset.filter(created_on__lt=before)
+
+        # TODO - Over here we might just use the after just above this, but we
+        # need to take in consideration other changes that are not in messages
+        # we can pick them up via MessageAction
+        #if last_refresh:
+        #    queryset = queryset.filter(updated_on__gt=last_refresh)
 
         queryset = queryset.prefetch_related('contact', 'labels', 'case__assignee', 'case__user_assignee')
 
