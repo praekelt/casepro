@@ -260,7 +260,13 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       $scope.pollBusy = false
       # TODO - over here we need to do something with the data
       # if the item exists in scope we update it and if not we add
-      console.log(data)
+      
+      updateItems = []
+      for item in data.results
+          updateItems.push(item)
+
+      $scope.items = updateItems
+      console.log updateItems
       console.log 'done'
     )
 
