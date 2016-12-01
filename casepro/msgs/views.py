@@ -13,6 +13,7 @@ from smartmin.mixins import NonAtomicMixin
 from smartmin.views import SmartCRUDL, SmartTemplateView
 from smartmin.views import SmartListView, SmartCreateView, SmartReadView, SmartUpdateView, SmartDeleteView
 from temba_client.utils import parse_iso8601
+from itertools import chain
 
 from casepro.rules.mixins import RuleFormMixin
 from casepro.statistics.models import DailyCount
@@ -191,9 +192,16 @@ class MessageCRUDL(SmartCRUDL):
             # TODO - Not sure about this...
             if self.request.GET.get('last_refresh', None):
                 del search['before']  # this might only be necessary for testing
-                messages = Message.search(org, user, search)
 
-                context['object_list'] = messages
+                new_messages = Message.search(org, user, search)
+
+                search['last_refresh'] = self.request.GET['last_refresh']
+                del search['after']
+                print search
+                updated_messages = Message.search(org, user, search)
+                print len(updated_messages)
+
+                context['object_list'] = list(chain(new_messages, updated_messages))
                 context['has_more'] = False
                 return context
 

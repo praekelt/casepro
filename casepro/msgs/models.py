@@ -301,8 +301,8 @@ class Message(models.Model):
         # TODO - Over here we might just use the after just above this, but we
         # need to take in consideration other changes that are not in messages
         # we can pick them up via MessageAction
-        # if last_refresh:
-        #     queryset = queryset.filter(actions__created_on__gt=last_refresh)
+        if last_refresh:
+            queryset = queryset.filter(actions__created_on__gt=last_refresh)
 
         queryset = queryset.prefetch_related('contact', 'labels', 'case__assignee', 'case__user_assignee')
 

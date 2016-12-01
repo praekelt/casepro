@@ -254,7 +254,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.activeSearch_refresh.after = $scope.lastPollTime
     $scope.activeSearch_refresh.after - null
 
-    console.log $scope.activeSearch_refresh
+    #console.log $scope.activeSearch_refresh
 
     console.log 'fetching'
     MessageService.fetchOld($scope.activeSearch_refresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
@@ -271,8 +271,10 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
           console.log item.id
 
           if scope_items.hasOwnProperty(item.id)
+              console.log 'refreshing', item
               $scope.items[scope_items[item.id]] = item
           else
+              console.log 'adding'
               $scope.items.unshift(item)
 
       console.log 'done'
