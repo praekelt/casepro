@@ -57,6 +57,7 @@ SITE_CASE_RESPONSE_REQUIRED_TIME = None  # specified in minutes, None to disable
 SITE_HIDE_CONTACT_FIELDS = []  # Listed fields should not be displayed
 SITE_CONTACT_DISPLAY = "name"  # Overrules SITE_HIDE_CONTACT_FIELDS Options: 'name', 'uuid' or 'urns'
 SITE_ALLOW_CASE_WITHOUT_MESSAGE = True
+SITE_MAX_MESSAGE_CHARS = 140  # the max value for this is 800
 
 # junebug configuration
 JUNEBUG_API_ROOT = 'http://localhost:8080/'
