@@ -282,7 +282,7 @@ class Message(models.Model):
         elif folder == MessageFolder.flagged:
             if not include_archived:
                 queryset = queryset.filter(is_archived=False)
-        else:
+        elif not last_refresh:
             queryset = queryset.filter(is_archived=False)
 
         if text:
