@@ -272,13 +272,13 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
 
           if scope_items.hasOwnProperty(item.id)
               console.log 'refreshing', item
-              if item.archived
-                  $scope.items.splice(scope_items[item.id], 1)
-              else
-                  $scope.items[scope_items[item.id]] = item
+              $scope.items[scope_items[item.id]] = item
           else
               console.log 'adding'
               $scope.items.unshift(item)
+
+      # remove the archived items
+      $scope.items = (item for item in $scope.items when item.archived == false)
 
       console.log 'done'
     ).catch((error) ->
