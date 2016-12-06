@@ -298,9 +298,7 @@ class Message(models.Model):
         if before:
             queryset = queryset.filter(created_on__lt=before)
 
-        # TODO - Over here we might just use the after just above this, but we
-        # need to take in consideration other changes that are not in messages
-        # we can pick them up via MessageAction
+        # if this is a refresh we want everything with new actions
         if last_refresh:
             queryset = queryset.filter(actions__created_on__gt=last_refresh)
 

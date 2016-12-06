@@ -189,24 +189,20 @@ class MessageCRUDL(SmartCRUDL):
 
             search = self.derive_search()
 
-            # TODO - Not sure about this...
+            # this is a refresh of messages
             if self.request.GET.get('last_refresh', None):
-                del search['before']  # this might only be necessary for testing
-
                 new_messages = Message.search(org, user, search)
 
                 search['last_refresh'] = self.request.GET['last_refresh']
                 del search['after']
-                print search
                 updated_messages = Message.search(org, user, search)
-                print len(updated_messages)
 
                 context['object_list'] = list(chain(new_messages, updated_messages))
                 context['has_more'] = False
                 return context
 
             messages = Message.search(org, user, search)
-            paginator = LazyPaginator(messages, per_page=2)
+            paginator = LazyPaginator(messages, per_page=50)
 
             context['object_list'] = paginator.page(page)
             context['has_more'] = paginator.num_pages > page

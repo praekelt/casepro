@@ -8,6 +8,7 @@ controllers = angular.module('cases.controllers', ['cases.services', 'cases.moda
 # Component refresh intervals
 INTERVAL_CASE_INFO = 30000
 INTERVAL_CASE_TIMELINE = 30000
+INTERVAL_MSG_REFRESH = 30000
 
 INFINITE_SCROLL_MAX_ITEMS = 1000
 
@@ -228,7 +229,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
 
     $scope.pollBusy = false
     $scope.lastPollTime = new Date()
-    $interval($scope.poll, 5000)
+    $interval($scope.poll, INTERVAL_MSG_REFRESH)
 
     $scope.$on('activeLabelChange', () ->
       $scope.onResetSearch()
@@ -240,48 +241,36 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.poll = ->
-
-    console.log "POLL"
-    console.log $scope.lastPollTime
     # a poll is already in progress, skip this one
     if $scope.pollBusy
       return
 
     $scope.pollBusy = true
     $scope.activeSearch_refresh = $scope.buildSearch()
-    #$scope.activeSearch_refresh.after = $scope.lastPollTime
     $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
     $scope.activeSearch_refresh.after = $scope.lastPollTime
-    # $scope.activeSearch_refresh.after - null
 
-    #console.log $scope.activeSearch_refresh
-
-    console.log 'fetching', $scope.activeSearch_refresh
     MessageService.fetchOld($scope.activeSearch_refresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
-      # TODO - over here we need to do something with the data
-      # if the item exists in scope we update it and if not we add
 
+      # quick access to index of items
       scope_items = {}
       for item, i in $scope.items
           scope_items[item.id] = i
 
       for item in data.results
-          console.log item.id
-
           if scope_items.hasOwnProperty(item.id)
-              console.log 'refreshing', item
+              # the item exists so replace with new data
               $scope.items[scope_items[item.id]] = item
           else
-              console.log 'adding'
+              # new item so we add it to the top
               $scope.items.unshift(item)
 
       # remove the archived items
       if $scope.activeSearch_refresh.folder != 'archived'
           $scope.items = (item for item in $scope.items when item.archived == false)
 
-      console.log 'done'
     ).catch((error) ->
       $scope.pollBusy = false
     )
