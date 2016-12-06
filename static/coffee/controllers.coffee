@@ -252,11 +252,11 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     #$scope.activeSearch_refresh.after = $scope.lastPollTime
     $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
     $scope.activeSearch_refresh.after = $scope.lastPollTime
-    $scope.activeSearch_refresh.after - null
+    # $scope.activeSearch_refresh.after - null
 
     #console.log $scope.activeSearch_refresh
 
-    console.log 'fetching'
+    console.log 'fetching', $scope.activeSearch_refresh
     MessageService.fetchOld($scope.activeSearch_refresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
@@ -278,7 +278,8 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
               $scope.items.unshift(item)
 
       # remove the archived items
-      $scope.items = (item for item in $scope.items when item.archived == false)
+      if $scope.activeSearch_refresh.folder != 'archived'
+          $scope.items = (item for item in $scope.items when item.archived == false)
 
       console.log 'done'
     ).catch((error) ->
