@@ -250,10 +250,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.activeSearchRefresh.last_refresh = $scope.lastPollTime
     $scope.activeSearchRefresh.after = $scope.lastPollTime
     
-    console.log $scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage
-    
     MessageService.fetchOld($scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
-      console.log data
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
 
