@@ -276,14 +276,18 @@ class Message(models.Model):
         if folder == MessageFolder.flagged:
             queryset = queryset.filter(is_flagged=True)
 
-        # archived messages can be implicitly or explicitly included depending on folder
-        if folder == MessageFolder.archived:
-            queryset = queryset.filter(is_archived=True)
-        elif folder == MessageFolder.flagged:
-            if not include_archived:
+        # if this is a refresh we want everything with new actions
+        if last_refresh:
+            queryset = queryset.filter(actions__created_on__gt=last_refresh)
+        else:
+            # archived messages can be implicitly or explicitly included depending on folder
+            if folder == MessageFolder.archived:
+                queryset = queryset.filter(is_archived=True)
+            elif folder == MessageFolder.flagged:
+                if not include_archived:
+                    queryset = queryset.filter(is_archived=False)
+            else:
                 queryset = queryset.filter(is_archived=False)
-        elif not last_refresh:
-            queryset = queryset.filter(is_archived=False)
 
         if text:
             queryset = queryset.filter(text__icontains=text)
@@ -297,10 +301,6 @@ class Message(models.Model):
             queryset = queryset.filter(created_on__gt=after)
         if before:
             queryset = queryset.filter(created_on__lt=before)
-
-        # if this is a refresh we want everything with new actions
-        if last_refresh:
-            queryset = queryset.filter(actions__created_on__gt=last_refresh)
 
         queryset = queryset.prefetch_related('contact', 'labels', 'case__assignee', 'case__user_assignee')
 
