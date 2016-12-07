@@ -270,12 +270,9 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
               # new item so we add it to the top
               $scope.items.unshift(item)
 
-      # remove the archived items
-      if $scope.activeSearchRefresh.folder != 'archived'
-          $scope.items = (item for item in $scope.items when item.archived == false)
-          
-      if $scope.activeSearchRefresh.folder != 'flagged'
-          $scope.items = (item for item in $scope.items when item.flagged == false)
+      # items removed from current folder
+      filter = $scope.getItemFilter()
+      $scope.items = (item for item in $scope.items when filter(item))
 
     ).catch((error) ->
       $scope.pollBusy = false
