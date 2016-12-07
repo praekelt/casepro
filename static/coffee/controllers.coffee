@@ -8,7 +8,7 @@ controllers = angular.module('cases.controllers', ['cases.services', 'cases.moda
 # Component refresh intervals
 INTERVAL_CASE_INFO = 30000
 INTERVAL_CASE_TIMELINE = 30000
-INTERVAL_MSG_REFRESH = 30000
+INTERVAL_MSG_REFRESH = 10000
 
 INFINITE_SCROLL_MAX_ITEMS = 1000
 
@@ -246,35 +246,43 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       return
 
     $scope.pollBusy = true
-    $scope.activeSearch_refresh = $scope.buildSearch()
-    $scope.activeSearch_refresh.last_refresh = $scope.lastPollTime
-    $scope.activeSearch_refresh.after = $scope.lastPollTime
-
-    MessageService.fetchOld($scope.activeSearch_refresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
+    $scope.activeSearchRefresh = $scope.buildSearch()
+    $scope.activeSearchRefresh.last_refresh = $scope.lastPollTime
+    $scope.activeSearchRefresh.after = $scope.lastPollTime
+    
+    console.log $scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage
+    
+    MessageService.fetchOld($scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
+      console.log data
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
 
       # quick access to index of items
-      scope_items = {}
+      scopeItems = {}
       for item, i in $scope.items
-          scope_items[item.id] = i
+          scopeItems[item.id] = i
 
       for item in data.results
-          if scope_items.hasOwnProperty(item.id)
+          if scopeItems.hasOwnProperty(item.id)
               # the item exists so replace with new data
-              $scope.items[scope_items[item.id]] = item
+              $scope.items[scopeItems[item.id]] = item
           else
               # new item so we add it to the top
               $scope.items.unshift(item)
 
       # remove the archived items
-      if $scope.activeSearch_refresh.folder != 'archived'
+      if $scope.activeSearchRefresh.folder != 'archived'
           $scope.items = (item for item in $scope.items when item.archived == false)
+          
+      if $scope.activeSearchRefresh.folder != 'flagged'
+          $scope.items = (item for item in $scope.items when item.flagged == false)
 
     ).catch((error) ->
       $scope.pollBusy = false
     )
 
+  $scope.$on '$destroy', ->
+    $interval.cancel($scope.poll)
 
   $scope.getItemFilter = () ->
     if $scope.folder == 'inbox'
@@ -310,22 +318,8 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
       )
     )
 
-  # $scope.fetchOldItems = (search, startTime, page) ->
-  #   $scope.autoRefresh = ->
-  #     MessageService.fetchOld(search, startTime, page).then((data) ->
-  #       $scope.items = data.results
-  #       $scope.oldItemsMore = data.hasMore
-  #       $scope.oldItemsLoading = false
-  #     )
-  #   $scope.autoRefresh()
-  #   $interval.cancel($scope.autoRefresh)
-  #   $interval($scope.autoRefresh, 10000)
-
   $scope.fetchOldItems = (search, startTime, page) ->
    return MessageService.fetchOld(search, startTime, page)
-
-  $scope.$on '$destroy', ->
-    $interval.cancel($scope.autoRefresh)
 
   $scope.onExpandMessage = (message) ->
     $scope.expandedMessageId = message.id

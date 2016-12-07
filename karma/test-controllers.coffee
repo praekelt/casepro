@@ -346,11 +346,15 @@ describe('controllers:', () ->
 
         $inboxScope.init('inbox', serverTime)
         $scope.init()
+        
+        $scope.lastPollTime = utcdate(2016, 1, 2, 3, 0, 0, 0)
+        jasmine.clock().mockDate($scope.lastPollTime)
 
         # extra test data
         test.msg1 = {id: 101, text: "Hello 1", labels: [test.tea], flagged: true, archived: false}
         test.msg2 = {id: 102, text: "Hello 2", labels: [test.coffee], flagged: false, archived: false}
         test.msg3 = {id: 103, text: "Hello 3", labels: [], flagged: false, archived: false}
+
       )
 
       it('should initialize correctly', () ->
@@ -358,9 +362,13 @@ describe('controllers:', () ->
         expect($scope.activeLabel).toEqual(null)
         expect($scope.activeContact).toEqual(null)
         expect($scope.inactiveLabels).toEqual([test.tea, test.coffee])
+        
+        expect($scope.pollBusy).toEqual(false)
+        expect($scope.lastPollTime).toEqual(utcdate(2016, 1, 2, 3, 0, 0, 0))
+        expect($intervalSpy).toHaveBeenCalledWith($scope.poll, 10000)
       )
 
-      it('should loadOldItems and auto-refresh on interval', () ->
+      it('loadOldItems', () ->
         fetchOld = spyOnPromise($q, $scope, MessageService, 'fetchOld')
 
         $scope.loadOldItems()
@@ -371,18 +379,34 @@ describe('controllers:', () ->
         }, $scope.startTime, 1)
 
         fetchOld.resolve({results: [test.msg3, test.msg2], hasMore: true})
-        
-        expect($intervalSpy).toHaveBeenCalledWith($scope.autoRefresh, 10000)
 
         expect($scope.items).toEqual([test.msg3, test.msg2])
         expect($scope.oldItemsMore).toEqual(true)
         expect($scope.isInfiniteScrollEnabled()).toEqual(true)
       )
 
+      it('polls for new and updated messages ', () ->
+        fetchOld = spyOnPromise($q, $scope, MessageService, 'fetchOld')
+        $scope.poll()
+        
+        expect($scope.pollBusy).toEqual(true)
+        expect($scope.activeSearchRefresh.last_refresh).toEqual(utcdate(2016, 1, 2, 3, 0, 0, 0))
+        expect($scope.activeSearchRefresh.after).toEqual(utcdate(2016, 1, 2, 3, 0, 0, 0))
+
+        expect(MessageService.fetchOld).toHaveBeenCalledWith({
+          after: utcdate(2016, 1, 2, 3, 0, 0, 0), archived: false, before: null, contact: null, folder: 'inbox', groups: [], label: null, last_refresh: utcdate(2016, 1, 2, 3, 0, 0, 0), text: null, 
+        }, utcdate(2016, 1, 2, 3, 0, 0, 0), 0)
+
+        fetchOld.resolve({results: [test.msg3, test.msg2], hasMore: true})
+
+        expect($scope.items).toEqual([test.msg2, test.msg3])
+        expect($scope.pollBusy).toEqual(false)
+        )
+
       it 'should cancel the intervals on destroy', ->
         spyOn($intervalSpy, 'cancel') 
         $scope.$destroy()
-        expect($intervalSpy.cancel).toHaveBeenCalledWith($scope.autoRefresh)
+        expect($intervalSpy.cancel).toHaveBeenCalledWith($scope.poll)
 
       it('getItemFilter', () ->
         filter = $scope.getItemFilter()
