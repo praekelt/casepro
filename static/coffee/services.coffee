@@ -157,6 +157,19 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
         params.label = label.id
 
       return $http.post('/message/action/' + action + '/', params)
+
+    #----------------------------------------------------------------------------
+    # Check if message is busy
+    #----------------------------------------------------------------------------
+    checkBusy: (messages) ->
+      console.log messages
+      params = {messages: (m.id for m in messages)}
+      console.log params
+      
+      return $http.post('/message/touch/', params).then((response) ->
+        console.log response
+        # return {results: TODO}
+      )
 ])
 
 

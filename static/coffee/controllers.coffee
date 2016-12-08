@@ -337,14 +337,19 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.onReplyToSelection = () ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> $scope.selection), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
-    .result.then((text) ->
-      MessageService.bulkReply($scope.selection, text).then(() ->
-        MessageService.bulkArchive($scope.selection).then(() ->
-          UtilsService.displayAlert('success', "Reply sent and messages archived")
-          $scope.updateItems()
-        )
-      )
+    console.log $scope.selection
+    MessageService.checkBusy($scope.selection).then((results) ->
+      console.log results
+      # if TODO
+      #   $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> $scope.selection), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+      #   .result.then((text) ->
+      #     MessageService.bulkReply($scope.selection, text).then(() ->
+      #       MessageService.bulkArchive($scope.selection).then(() ->
+      #         UtilsService.displayAlert('success', "Reply sent and messages archived")
+      #         $scope.updateItems()
+      #       )
+      #     )
+      #   )
     )
 
   $scope.onArchiveSelection = () ->
