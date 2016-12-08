@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='message',
             name='last_action',
-            field=models.DateTimeField(help_text='Last action taken on this message', null=True),
+            field=models.DateTimeField(auto_now=True, help_text='Last action taken on this message', null=True),
         ),
     ]

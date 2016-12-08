@@ -14,6 +14,7 @@ from smartmin.views import SmartCRUDL, SmartTemplateView
 from smartmin.views import SmartListView, SmartCreateView, SmartReadView, SmartUpdateView, SmartDeleteView
 from temba_client.utils import parse_iso8601
 from itertools import chain
+from datetime import datetime, timedelta
 
 from casepro.rules.mixins import RuleFormMixin
 from casepro.statistics.models import DailyCount
@@ -26,6 +27,7 @@ from .tasks import message_export, reply_export
 
 
 RESPONSE_DELAY_WARN_SECONDS = 24 * 60 * 60  # show response delays > 1 day as warning
+MESSAGE_BUSY_MINUTES = 10
 
 
 class LabelCRUDL(SmartCRUDL):
@@ -173,7 +175,7 @@ class MessageSearchMixin(object):
 
 
 class MessageCRUDL(SmartCRUDL):
-    actions = ('search', 'action', 'label', 'bulk_reply', 'forward', 'history')
+    actions = ('search', 'touch', 'action', 'label', 'bulk_reply', 'forward', 'history')
     model = Message
 
     class Search(OrgPermsMixin, MessageSearchMixin, SmartTemplateView):
@@ -213,6 +215,38 @@ class MessageCRUDL(SmartCRUDL):
                 'results': [m.as_json() for m in context['object_list']],
                 'has_more': context['has_more']
             }, encoder=JSONEncoder)
+
+    class Touch(OrgPermsMixin, SmartTemplateView):
+        """
+        AJAX endpoint for updating messages with a date and user id.
+        Takes a list of message ids.
+        """
+        @classmethod
+        def derive_url_pattern(cls, path, action):
+            return r'^message/touch/$'
+
+        def post(self, request, *args, **kwargs):
+            org = request.org
+            user = request.user
+
+            message_ids = request.json['messages']
+            messages = org.incoming_messages.filter(org=org, backend_id__in=message_ids)
+
+            busy_messages = []
+
+            for message in messages:
+
+                if (message.last_action > datetime.now() - timedelta(minutes=MESSAGE_BUSY_MINUTES))\
+                        and (message.actioned_by.id != user.id):
+                    busy_messages.append(message)
+
+                else:
+                    message.last_action = datetime.now()
+                    message.actioned_by = user.id
+                    message.save()
+
+            busy_ids = [m.id for m in busy_messages]
+            return JsonResponse({'messages': busy_ids}, encoder=JSONEncoder)
 
     class Action(OrgPermsMixin, SmartTemplateView):
         """
