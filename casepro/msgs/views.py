@@ -237,19 +237,18 @@ class MessageCRUDL(SmartCRUDL):
 
             for message in messages:
 
-                # TODO make this readable and remove the +1
-                if (message.last_action and message.last_action > (timezone.now() -
-                    timedelta(minutes=MESSAGE_BUSY_MINUTES)))\
-                        and (message.actioned_by and message.actioned_by.id != user.id+1):
-                    busy_messages.append(message)
+                if message.last_action and message.actioned_by:
+                    if message.last_action > (timezone.now() - timedelta(minutes=MESSAGE_BUSY_MINUTES)):
+                        if message.actioned_by.id != user.id:
+                            busy_messages.append(message.id)
 
-                else:
+            if not busy_messages:
+                for message in messages:
                     message.last_action = timezone.now()
                     message.actioned_by = user
                     message.save()
 
-            busy_ids = [m.id for m in busy_messages]
-            return JsonResponse({'messages': busy_ids}, encoder=JSONEncoder)
+            return JsonResponse({'messages': busy_messages}, encoder=JSONEncoder)
 
     class Action(OrgPermsMixin, SmartTemplateView):
         """
