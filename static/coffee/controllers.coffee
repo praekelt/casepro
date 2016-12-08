@@ -313,7 +313,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.fetchOldItems = (search, startTime, page) ->
-   return MessageService.fetchOld(search, startTime, page)
+    return MessageService.fetchOld(search, startTime, page)
 
   $scope.onExpandMessage = (message) ->
     $scope.expandedMessageId = message.id
@@ -337,19 +337,19 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.onReplyToSelection = () ->
-    console.log $scope.selection
     MessageService.checkBusy($scope.selection).then((results) ->
-      console.log results
-      # if TODO
-      #   $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> $scope.selection), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
-      #   .result.then((text) ->
-      #     MessageService.bulkReply($scope.selection, text).then(() ->
-      #       MessageService.bulkArchive($scope.selection).then(() ->
-      #         UtilsService.displayAlert('success', "Reply sent and messages archived")
-      #         $scope.updateItems()
-      #       )
-      #     )
-      #   )
+      if results.messages.length == 0
+        $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> $scope.selection), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+        .result.then((text) ->
+          MessageService.bulkReply($scope.selection, text).then(() ->
+            MessageService.bulkArchive($scope.selection).then(() ->
+              UtilsService.displayAlert('success', "Reply sent and messages archived")
+              $scope.updateItems()
+            )
+          )
+        )
+      else
+        UtilsService.displayAlert('error', "Message busy")
     )
 
   $scope.onArchiveSelection = () ->
@@ -376,23 +376,33 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     )
 
   $scope.onReplyToMessage = (message) ->
-    $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> null), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
-    .result.then((text) ->
-      MessageService.bulkReply([message], text).then(() ->
-        MessageService.bulkArchive([message]).then(() ->
-          UtilsService.displayAlert('success', "Reply sent and message archived")
-          $scope.updateItems()
+    MessageService.checkBusy([message]).then((results) ->
+      if results.messages.length == 0
+        $uibModal.open({templateUrl: '/partials/modal_reply.html', controller: 'ReplyModalController', resolve: {selection: (() -> null), maxLength: (() -> OUTGOING_TEXT_MAX_LEN)}})
+        .result.then((text) ->
+          MessageService.bulkReply([message], text).then(() ->
+            MessageService.bulkArchive([message]).then(() ->
+              UtilsService.displayAlert('success', "Reply sent and message archived")
+              $scope.updateItems()
+            )
+          )
         )
-      )
+      else
+        UtilsService.displayAlert('error', "Message busy")
     )
 
   $scope.onForwardMessage = (message) ->
-    initialText = '"' + message.text + '"'
+    MessageService.checkBusy([message]).then((results) ->
+      if results.messages.length == 0
+        initialText = '"' + message.text + '"'
 
-    UtilsService.composeModal("Forward", initialText, OUTGOING_TEXT_MAX_LEN).then((data) ->
-      MessageService.forward(message, data.text, data.urn).then(() ->
-        UtilsService.displayAlert('success', "Message forwarded to " + data.urn.path)
-      )
+        UtilsService.composeModal("Forward", initialText, OUTGOING_TEXT_MAX_LEN).then((data) ->
+          MessageService.forward(message, data.text, data.urn).then(() ->
+            UtilsService.displayAlert('success', "Message forwarded to " + data.urn.path)
+          )
+        )
+      else
+        UtilsService.displayAlert('error', "Message busy")
     )
 
   $scope.onCaseFromMessage = (message) ->
@@ -422,13 +432,18 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     }})
 
   newCaseFromMessage = (message, possibleAssignees) ->
-    UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees).then((data) ->
-      CaseService.open(message, data.summary, data.assignee, data.user).then((caseObj) ->
-          caseUrl = '/case/read/' + caseObj.id + '/'
-          if !caseObj.is_new
-            caseUrl += '?alert=open_found_existing'
-          UtilsService.navigate(caseUrl)
-      )
+    MessageService.checkBusy([message]).then((results) ->
+      if results.messages.length == 0
+        UtilsService.newCaseModal(message.text, CASE_SUMMARY_MAX_LEN, possibleAssignees).then((data) ->
+          CaseService.open(message, data.summary, data.assignee, data.user).then((caseObj) ->
+              caseUrl = '/case/read/' + caseObj.id + '/'
+              if !caseObj.is_new
+                caseUrl += '?alert=open_found_existing'
+              UtilsService.navigate(caseUrl)
+          )
+        )
+      else
+        UtilsService.displayAlert('error', "Message busy")
     )
 ])
 

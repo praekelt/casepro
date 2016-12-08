@@ -162,13 +162,10 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
     # Check if message is busy
     #----------------------------------------------------------------------------
     checkBusy: (messages) ->
-      console.log messages
       params = {messages: (m.id for m in messages)}
-      console.log params
       
       return $http.post('/message/touch/', params).then((response) ->
-        console.log response
-        # return {results: TODO}
+        return {messages: response.data.messages}
       )
 ])
 
@@ -539,6 +536,7 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
 
     displayAlert: (type, message) ->
       $window.displayAlert(type, message)
+      
 
     navigate: (url) ->
       $window.location.replace(url)
