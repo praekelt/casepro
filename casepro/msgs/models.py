@@ -213,6 +213,8 @@ class Message(models.Model):
 
     case = models.ForeignKey('cases.Case', null=True, related_name="incoming_messages")
 
+    last_action = models.DateTimeField(null=True, help_text="Last action taken on this message")
+
     def __init__(self, *args, **kwargs):
         if self.SAVE_CONTACT_ATTR in kwargs:
             setattr(self, self.SAVE_CONTACT_ATTR, kwargs.pop(self.SAVE_CONTACT_ATTR))
