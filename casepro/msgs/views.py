@@ -14,7 +14,8 @@ from smartmin.views import SmartCRUDL, SmartTemplateView
 from smartmin.views import SmartListView, SmartCreateView, SmartReadView, SmartUpdateView, SmartDeleteView
 from temba_client.utils import parse_iso8601
 from itertools import chain
-from datetime import datetime, timedelta
+from datetime import timedelta
+from django.utils import timezone
 
 from casepro.rules.mixins import RuleFormMixin
 from casepro.statistics.models import DailyCount
@@ -236,13 +237,15 @@ class MessageCRUDL(SmartCRUDL):
 
             for message in messages:
 
-                if (message.last_action > datetime.now() - timedelta(minutes=MESSAGE_BUSY_MINUTES))\
-                        and (message.actioned_by.id != user.id):
+                # TODO make this readable and remove the +1
+                if (message.last_action and message.last_action > (timezone.now() -
+                    timedelta(minutes=MESSAGE_BUSY_MINUTES)))\
+                        and (message.actioned_by and message.actioned_by.id != user.id+1):
                     busy_messages.append(message)
 
                 else:
-                    message.last_action = datetime.now()
-                    message.actioned_by = user.id
+                    message.last_action = timezone.now()
+                    message.actioned_by = user
                     message.save()
 
             busy_ids = [m.id for m in busy_messages]
