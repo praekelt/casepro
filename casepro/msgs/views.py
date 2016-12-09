@@ -14,7 +14,6 @@ from smartmin.views import SmartCRUDL, SmartTemplateView
 from smartmin.views import SmartListView, SmartCreateView, SmartReadView, SmartUpdateView, SmartDeleteView
 from temba_client.utils import parse_iso8601
 from itertools import chain
-from datetime import timedelta
 from django.utils import timezone
 
 from casepro.rules.mixins import RuleFormMixin
@@ -28,7 +27,6 @@ from .tasks import message_export, reply_export
 
 
 RESPONSE_DELAY_WARN_SECONDS = 24 * 60 * 60  # show response delays > 1 day as warning
-MESSAGE_BUSY_MINUTES = 10
 
 
 class LabelCRUDL(SmartCRUDL):
@@ -190,6 +188,8 @@ class MessageCRUDL(SmartCRUDL):
             user = self.request.user
             page = int(self.request.GET.get('page', 1))
 
+            context['user_id'] = user.id
+
             search = self.derive_search()
 
             # this is a refresh of messages
@@ -213,7 +213,7 @@ class MessageCRUDL(SmartCRUDL):
 
         def render_to_response(self, context, **response_kwargs):
             return JsonResponse({
-                'results': [m.as_json() for m in context['object_list']],
+                'results': [m.as_json(context.get('user_id')) for m in context['object_list']],
                 'has_more': context['has_more']
             }, encoder=JSONEncoder)
 
@@ -236,11 +236,8 @@ class MessageCRUDL(SmartCRUDL):
             busy_messages = []
 
             for message in messages:
-
-                if message.last_action and message.actioned_by:
-                    if message.last_action > (timezone.now() - timedelta(minutes=MESSAGE_BUSY_MINUTES)):
-                        if message.actioned_by.id != user.id:
-                            busy_messages.append(message.id)
+                if message.get_busy(request.user.id):
+                    busy_messages.append(message.id)
 
             if not busy_messages:
                 for message in messages:

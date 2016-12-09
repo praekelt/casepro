@@ -13,6 +13,7 @@ from django.utils.timesince import timesince
 from django.utils.timezone import now
 from enum import Enum
 from django_redis import get_redis_connection
+from datetime import timedelta
 
 from casepro.backend import get_backend
 from casepro.contacts.models import Contact, Field
@@ -21,6 +22,7 @@ from casepro.utils.export import BaseSearchExport
 
 LABEL_LOCK_KEY = 'lock:label:%d:%s'
 MESSAGE_LOCK_KEY = 'lock:message:%d:%d'
+MESSAGE_BUSY_MINUTES = 10
 
 
 class MessageFolder(Enum):
@@ -317,6 +319,14 @@ class Message(models.Model):
         """
         return self.actions.select_related('created_by', 'label').order_by('-pk')
 
+    def get_busy(self, user_id):
+        if self.last_action and self.actioned_by:
+            if self.last_action > (now() - timedelta(minutes=MESSAGE_BUSY_MINUTES)):
+                if self.actioned_by.id != user_id:
+                    return True
+
+        return False
+
     def release(self):
         """
         Deletes this message, removing it from any labels (only callable by sync)
@@ -423,10 +433,11 @@ class Message(models.Model):
 
             MessageAction.create(org, user, messages, MessageAction.RESTORE)
 
-    def as_json(self):
+    def as_json(self, user_id=None):
         """
         Prepares this message for JSON serialization
         """
+
         return {
             'id': self.backend_id,
             'contact': self.contact.as_json(full=False),
@@ -436,7 +447,8 @@ class Message(models.Model):
             'flagged': self.is_flagged,
             'archived': self.is_archived,
             'flow': self.type == self.TYPE_FLOW,
-            'case': self.case.as_json(full=False) if self.case else None
+            'case': self.case.as_json(full=False) if self.case else None,
+            'busy': self.get_busy(user_id) if user_id else False,
         }
 
     def __str__(self):
