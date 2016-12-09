@@ -7,6 +7,7 @@ from dash.utils import get_obj_cacheable
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import models
+from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django.utils.timesince import timesince
@@ -284,7 +285,8 @@ class Message(models.Model):
 
         # if this is a refresh we want everything with new actions
         if last_refresh:
-            queryset = queryset.filter(actions__created_on__gt=last_refresh)
+            # queryset = queryset.filter(actions__created_on__gt=last_refresh)
+            queryset.filter(Q(actions__created_on__gt=last_refresh) | Q(last_action__gt=last_refresh))
         else:
             # archived messages can be implicitly or explicitly included depending on folder
             if folder == MessageFolder.archived:
