@@ -249,7 +249,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
     $scope.activeSearchRefresh = $scope.buildSearch()
     $scope.activeSearchRefresh.last_refresh = $scope.lastPollTime
     $scope.activeSearchRefresh.after = $scope.lastPollTime
-    
+
     MessageService.fetchOld($scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
       $scope.lastPollTime = new Date()
       $scope.pollBusy = false
@@ -263,7 +263,7 @@ controllers.controller('MessagesController', ['$scope', '$timeout', '$interval',
           if scopeItems.hasOwnProperty(item.id)
               # the item exists so replace with new data
               $scope.items[scopeItems[item.id]] = item
-          else
+          else if !item.busy
               # new item so we add it to the top
               $scope.items.unshift(item)
 
