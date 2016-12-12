@@ -365,9 +365,19 @@ describe('services:', () ->
     )
 
     describe('startExport', () ->
-      it('posts to export endpoint', () ->
+      it('posts to busy check endpoint', () ->
         $httpBackend.expectPOST('/messageexport/create/?archived=0&folder=inbox', null).respond('')
         MessageService.startExport({folder: "inbox"})
+        $httpBackend.flush()
+      )
+    )
+
+    describe('checkBusy', () ->
+      it('posts to touch endpoint', () ->
+        $httpBackend.expectPOST('/message/touch/', {messages: [101, 102]}).respond('{"messages": [101, 102]}')
+        MessageService.checkBusy([test.msg1, test.msg2]).then((data) ->
+          expect(data.messages).toEqual([101, 102])
+        )
         $httpBackend.flush()
       )
     )
