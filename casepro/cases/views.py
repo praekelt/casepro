@@ -24,7 +24,6 @@ from casepro.utils import json_encode, datetime_to_microseconds, microseconds_to
 from casepro.utils import month_range, humanize_seconds
 from casepro.utils.export import BaseDownloadView
 
-from . import MAX_MESSAGE_CHARS
 from .forms import PartnerCreateForm, PartnerUpdateForm
 from .models import AccessLevel, Case, CaseFolder, CaseExport, Partner
 from .tasks import case_export
@@ -73,7 +72,7 @@ class CaseCRUDL(SmartCRUDL):
                 'fields': [f.as_json() for f in fields]
             })
 
-            context['max_msg_chars'] = MAX_MESSAGE_CHARS
+            context['max_msg_chars'] = settings.SITE_MAX_MESSAGE_CHARS
             context['can_update'] = can_update
             context['alert'] = self.request.GET.get('alert', None)
             context['case_id'] = case.id
@@ -505,6 +504,7 @@ class BaseInboxView(OrgPermsMixin, SmartTemplateView):
         context['closed_case_count'] = Case.get_closed(org, user).count()
         context['allow_case_without_message'] = getattr(settings, 'SITE_ALLOW_CASE_WITHOUT_MESSAGE', False)
         context['user_must_reply_with_faq'] = org and not user.is_anonymous() and user.must_use_faq()
+        context['site_contact_display'] = getattr(settings, 'SITE_CONTACT_DISPLAY', "name")
         return context
 
 

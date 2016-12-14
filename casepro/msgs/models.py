@@ -233,7 +233,7 @@ class FAQ(models.Model):
         if text:
             queryset = queryset.filter(Q(question__icontains=text) | Q(answer__icontains=text))
 
-        queryset = queryset.prefetch_related('labels')
+        queryset = queryset.prefetch_related('labels', 'parent__labels')
 
         return queryset.order_by('question')
 
@@ -266,13 +266,14 @@ class FAQ(models.Model):
         if full:
             if not self.parent:
                 parent_json = None
+                result['labels'] = [l.as_json() for l in self.labels.all()]
             else:
                 parent_json = self.parent.id
+                result['labels'] = [l.as_json() for l in self.parent.labels.all()]
 
             result['answer'] = self.answer
             result['language'] = self.get_language()
             result['parent'] = parent_json
-            result['labels'] = [l.as_json() for l in self.labels.all()]
 
         return result
 
@@ -608,7 +609,7 @@ class Outgoing(models.Model):
 
     activity = models.CharField(max_length=1, choices=ACTIVITY_CHOICES)
 
-    text = models.TextField(max_length=640)
+    text = models.TextField(max_length=800)
 
     backend_broadcast_id = models.IntegerField(null=True, help_text=_("Broadcast id from the backend"))
 
