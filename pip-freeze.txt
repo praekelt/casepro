@@ -56,4 +56,4 @@ xlrd==1.0.0
 xlutils==2.0.0
 xlwt==1.1.2
 casepropods.family_connect_registration>=0.1.4
-git+https://github.com/praekelt/casepropods.family_connect_subscription.git@develop#egg=casepropods.family_connect_subscription
+casepropods.family_connect_subscription>=0.3.3
