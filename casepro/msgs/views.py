@@ -237,7 +237,7 @@ class MessageCRUDL(SmartCRUDL):
 
             for message in messages:
                 if message.get_busy(request.user.id):
-                    busy_messages.append(message.id)
+                    busy_messages.append(message.backend_id)
 
             if not busy_messages:
                 for message in messages:
