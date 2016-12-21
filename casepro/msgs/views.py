@@ -13,7 +13,6 @@ from smartmin.mixins import NonAtomicMixin
 from smartmin.views import SmartCRUDL, SmartTemplateView
 from smartmin.views import SmartListView, SmartCreateView, SmartReadView, SmartUpdateView, SmartDeleteView
 from temba_client.utils import parse_iso8601
-from itertools import chain
 from django.utils import timezone
 
 from casepro.rules.mixins import RuleFormMixin
@@ -200,7 +199,8 @@ class MessageCRUDL(SmartCRUDL):
                 del search['after']
                 updated_messages = Message.search(org, user, search)
 
-                context['object_list'] = list(chain(new_messages, updated_messages))
+                context['object_list'] = list(new_messages) + list(set(updated_messages) - set(new_messages))
+
                 context['has_more'] = False
                 return context
 
