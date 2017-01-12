@@ -439,7 +439,6 @@ class Message(models.Model):
         """
         Prepares this message for JSON serialization
         """
-
         return {
             'id': self.backend_id,
             'contact': self.contact.as_json(full=False),

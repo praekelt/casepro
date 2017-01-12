@@ -159,7 +159,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       return $http.post('/message/action/' + action + '/', params)
 
     #----------------------------------------------------------------------------
-    # Check if message is busy
+    # Check if message is busy, set busy state and return busy message ids
     #----------------------------------------------------------------------------
     checkBusy: (messages, notBusy) ->
       action = if notBusy then 'notbusy' else 'busy'
@@ -537,7 +537,6 @@ services.factory('UtilsService', ['$window', '$uibModal', ($window, $uibModal) -
 
     displayAlert: (type, message) ->
       $window.displayAlert(type, message)
-      
 
     navigate: (url) ->
       $window.location.replace(url)

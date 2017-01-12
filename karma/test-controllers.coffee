@@ -354,7 +354,6 @@ describe('controllers:', () ->
         test.msg1 = {id: 101, text: "Hello 1", labels: [test.tea], flagged: true, archived: false}
         test.msg2 = {id: 102, text: "Hello 2", labels: [test.coffee], flagged: false, archived: false}
         test.msg3 = {id: 103, text: "Hello 3", labels: [], flagged: false, archived: false}
-
       )
 
       it('should initialize correctly', () ->
