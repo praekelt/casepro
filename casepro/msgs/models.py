@@ -22,7 +22,7 @@ from casepro.utils.export import BaseSearchExport
 
 LABEL_LOCK_KEY = 'lock:label:%d:%s'
 MESSAGE_LOCK_KEY = 'lock:message:%d:%d'
-MESSAGE_BUSY_MINUTES = 10
+MESSAGE_BUSY_SECONDS = 300
 
 
 class MessageFolder(Enum):
@@ -322,9 +322,10 @@ class Message(models.Model):
 
     def get_busy(self, user_id):
         if self.last_action and self.actioned_by:
-            if self.last_action > (now() - timedelta(minutes=MESSAGE_BUSY_MINUTES)):
+            if self.last_action > (now() - timedelta(seconds=MESSAGE_BUSY_SECONDS)):
                 if self.actioned_by.id != user_id:
-                    return True
+                    diff = (self.last_action + timedelta(seconds=MESSAGE_BUSY_SECONDS)) - now()
+                    return diff.seconds
 
         return False
 

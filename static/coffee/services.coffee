@@ -161,10 +161,11 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
     #----------------------------------------------------------------------------
     # Check if message is busy
     #----------------------------------------------------------------------------
-    checkBusy: (messages) ->
+    checkBusy: (messages, notBusy) ->
+      action = if notBusy then 'notbusy' else 'busy'
       params = {messages: (m.id for m in messages)}
       
-      return $http.post('/message/touch/', params).then((response) ->
+      return $http.post('/message/touch/' + action + '/', params).then((response) ->
         return {messages: response.data.messages}
       )
 ])

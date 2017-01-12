@@ -217,7 +217,7 @@ controllers.controller('BaseItemsController', ['$scope', 'UtilsService', ($scope
 #============================================================================
 # Incoming messages controller
 #============================================================================
-controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $interval, $uibModal, $controller, CaseService, MessageService, PartnerService, UserService, UtilsService) ->
+controllers.controller('MessagesController', ['$scope', '$interval', '$timeout', '$uibModal', '$controller', 'CaseService', 'MessageService', 'PartnerService', 'UserService', 'UtilsService', ($scope, $interval, $timeout, $uibModal, $controller, CaseService, MessageService, PartnerService, UserService, UtilsService) ->
   $controller('BaseItemsController', {$scope: $scope})
 
   $scope.advancedSearch = false
@@ -267,6 +267,16 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
         else if !item.busy
           # new item so we add it to the top
           $scope.items.unshift(item)
+
+      # deactivate busy state after message lock interval
+      for item in $scope.items
+        if item.busy and !item.timeoutId
+          notBusy = (busyItem) ->
+            busyItem.busy = false
+            busyItem.timeoutId = false
+            $scope.updateItems()
+
+          item.timeoutId = $timeout(notBusy, item.busy * 1000, true, item)
 
       # items removed from current folder
       filter = $scope.getItemFilter()
@@ -367,7 +377,9 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
                 $scope.updateItems()
               )
             )
-        )
+          , ->
+            MessageService.checkBusy($scope.selection, true)
+          )
     )
 
   $scope.onArchiveSelection = () ->
@@ -406,6 +418,8 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
                 $scope.updateItems()
               )
             )
+        , ->
+          MessageService.checkBusy([message], true)
         )
     )
 
@@ -419,6 +433,8 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
           MessageService.forward(message, data.text, data.urn).then(() ->
             UtilsService.displayAlert('success', "Message forwarded to " + data.urn.path)
           )
+        , ->
+          MessageService.checkBusy([message], true)
         )
     )
 
@@ -460,6 +476,8 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
                 caseUrl += '?alert=open_found_existing'
               UtilsService.navigate(caseUrl)
           )
+        , ->
+          MessageService.checkBusy([message], true)
         )
     )
 ])

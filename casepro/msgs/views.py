@@ -224,26 +224,38 @@ class MessageCRUDL(SmartCRUDL):
         """
         @classmethod
         def derive_url_pattern(cls, path, action):
-            return r'^message/touch/$'
+            return r'^message/touch/(?P<action>\w+)/$'
 
         def post(self, request, *args, **kwargs):
             org = request.org
             user = request.user
+
+            action = kwargs['action']
 
             message_ids = request.json['messages']
             messages = org.incoming_messages.filter(org=org, backend_id__in=message_ids)
 
             busy_messages = []
 
-            for message in messages:
-                if message.get_busy(request.user.id):
-                    busy_messages.append(message.backend_id)
-
-            if not busy_messages:
+            if action == 'busy':
                 for message in messages:
-                    message.last_action = timezone.now()
-                    message.actioned_by = user
+                    if message.get_busy(request.user.id):
+                        busy_messages.append(message.backend_id)
+
+                if not busy_messages:
+                    for message in messages:
+                        message.last_action = timezone.now()
+                        message.actioned_by = user
+                        message.save()
+
+            elif action == 'notbusy':
+                for message in messages:
+                    message.last_action = None
+                    message.actioned_by = None
                     message.save()
+
+            else:
+                return HttpResponseBadRequest("Invalid action: %s", action)
 
             return JsonResponse({'messages': busy_messages}, encoder=JSONEncoder)
 
