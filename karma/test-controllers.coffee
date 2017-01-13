@@ -390,10 +390,9 @@ describe('controllers:', () ->
         
         expect($scope.pollBusy).toEqual(true)
         expect($scope.activeSearchRefresh.last_refresh).toEqual(utcdate(2016, 1, 2, 3, 0, 0, 0))
-        expect($scope.activeSearchRefresh.after).toEqual(utcdate(2016, 1, 2, 3, 0, 0, 0))
 
         expect(MessageService.fetchOld).toHaveBeenCalledWith({
-          after: utcdate(2016, 1, 2, 3, 0, 0, 0), archived: false, before: null, contact: null, folder: 'inbox', groups: [], label: null, last_refresh: utcdate(2016, 1, 2, 3, 0, 0, 0), text: null, 
+          after: null, archived: false, before: null, contact: null, folder: 'inbox', groups: [], label: null, last_refresh: utcdate(2016, 1, 2, 3, 0, 0, 0), text: null, 
         }, utcdate(2016, 1, 2, 3, 0, 0, 0), 0)
 
         fetchOld.resolve({results: [test.msg3, test.msg2], hasMore: true})

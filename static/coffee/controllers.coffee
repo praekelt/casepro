@@ -248,7 +248,6 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$timeout',
     $scope.pollBusy = true
     $scope.activeSearchRefresh = $scope.buildSearch()
     $scope.activeSearchRefresh.last_refresh = $scope.lastPollTime
-    $scope.activeSearchRefresh.after = $scope.lastPollTime
 
     MessageService.fetchOld($scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
       $scope.lastPollTime = new Date()
@@ -263,8 +262,7 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$timeout',
         if scopeItems.hasOwnProperty(item.id)
           # the item exists so replace with new data
           $scope.items[scopeItems[item.id]] = item
-          $scope.updateItems()
-        else if !item.busy
+        else
           # new item so we add it to the top
           $scope.items.unshift(item)
 
@@ -274,7 +272,6 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$timeout',
           notBusy = (busyItem) ->
             busyItem.busy = false
             busyItem.timeoutId = false
-            $scope.updateItems()
 
           item.timeoutId = $timeout(notBusy, item.busy * 1000, true, item)
 
@@ -285,6 +282,7 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$timeout',
     ).catch((error) ->
       $scope.pollBusy = false
     )
+    $scope.updateItems()
 
   $scope.$on '$destroy', ->
     $interval.cancel($scope.poll)
@@ -340,11 +338,12 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$timeout',
         item.busy = true
         item.selected = false
         $scope.expandedMessageId = false
-        $scope.updateItems()
+
+    $scope.updateItems()
 
     # show busy alert
     busyMessages = busyMessage.join('</li><li>')
-    UtilsService.displayAlert('error', '<strong>The following message(s) are busy:</strong><br><ul><li>' + busyMessages + '</ul>')
+    UtilsService.displayAlert('error', '<strong>The following message(s) are busy:</strong><br><ul><li>' + busyMessages + '</li></ul>')
 
   #----------------------------------------------------------------------------
   # Selection actions
