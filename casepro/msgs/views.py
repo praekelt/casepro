@@ -196,7 +196,7 @@ class MessageCRUDL(SmartCRUDL):
                 new_messages = Message.search(org, user, search)
 
                 search['last_refresh'] = self.request.GET['last_refresh']
-                del search['after']
+
                 updated_messages = Message.search(org, user, search)
 
                 context['object_list'] = list(new_messages) + list(set(updated_messages) - set(new_messages))

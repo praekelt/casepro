@@ -304,7 +304,7 @@ class Message(models.Model):
         if group_ids:
             queryset = queryset.filter(contact__groups__pk__in=group_ids).distinct()
 
-        if after:
+        if after and not last_refresh:
             queryset = queryset.filter(created_on__gt=after)
         if before:
             queryset = queryset.filter(created_on__lt=before)
