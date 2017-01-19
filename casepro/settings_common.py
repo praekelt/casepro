@@ -57,7 +57,7 @@ SITE_CASE_RESPONSE_REQUIRED_TIME = None  # specified in minutes, None to disable
 SITE_HIDE_CONTACT_FIELDS = []  # Listed fields should not be displayed
 SITE_CONTACT_DISPLAY = "name"  # Overrules SITE_HIDE_CONTACT_FIELDS Options: 'name', 'uuid' or 'urns'
 SITE_ALLOW_CASE_WITHOUT_MESSAGE = True
-SITE_MAX_MESSAGE_CHARS = 140  # the max value for this is 800
+SITE_MAX_MESSAGE_CHARS = 160  # the max value for this is 800
 
 # junebug configuration
 JUNEBUG_API_ROOT = 'http://localhost:8080/'
@@ -122,11 +122,6 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'compressor.finders.CompressorFinder',
-)
-
-COMPRESS_PRECOMPILERS = (
-    ('text/coffeescript', 'coffee --compile --stdio'),
-    ('text/less', 'casepro.compress.LessFilter'),
 )
 
 # Make this unique, and don't share it with anybody.
@@ -280,18 +275,19 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.contrib.auth.context_processors.auth',
-                'django.core.context_processors.debug',
-                'django.core.context_processors.i18n',
-                'django.core.context_processors.media',
-                'django.core.context_processors.static',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
                 'django.contrib.messages.context_processors.messages',
-                'django.core.context_processors.request',
+                'django.template.context_processors.request',
                 'dash.orgs.context_processors.user_group_perms_processor',
                 'dash.orgs.context_processors.set_org_processor',
                 'dash.context_processors.lang_direction',
                 'casepro.cases.context_processors.sentry_dsn',
                 'casepro.cases.context_processors.server_time',
                 'casepro.profiles.context_processors.user',
+                'casepro.msgs.context_processors.messages',
             ],
             'loaders': [
                 'dash.utils.haml.HamlFilesystemLoader',
@@ -479,7 +475,7 @@ INTERNAL_IPS = ('127.0.0.1',)
 # Django-celery
 # -----------------------------------------------------------------------------------
 BROKER_URL = 'redis://localhost:6379/%d' % (10 if TESTING else 15)
-CELERY_RESULT_BACKEND = BROKER_URL
+CELERY_RESULT_BACKEND = None  # task results are stored internally
 
 CELERYBEAT_SCHEDULE = {
     'message-pull': {
@@ -513,4 +509,21 @@ CELERYBEAT_SCHEDULE = {
 
 CELERY_TIMEZONE = 'UTC'
 
+# -----------------------------------------------------------------------------------
+# Django Compressor configuration
+# -----------------------------------------------------------------------------------
+
+if TESTING:
+    # if only testing, disable coffeescript and less compilation
+    COMPRESS_PRECOMPILERS = ()
+else:
+    COMPRESS_PRECOMPILERS = (
+        ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '../static', 'less')),
+        ('text/coffeescript', 'coffee --compile --stdio')
+    )
+    COMPRESS_OFFLINE_CONTEXT = dict(STATIC_URL=STATIC_URL, base_template='frame.html')
+
+# -----------------------------------------------------------------------------------
+# Pods
+# -----------------------------------------------------------------------------------
 PODS = []
