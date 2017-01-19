@@ -68,7 +68,7 @@ SITE_MAX_MESSAGE_CHARS = 640  # the max value for this is 800
 
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost:6379')
 
-BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)
+BROKER_URL = 'redis://%s/%d' % (REDIS_HOST, 10 if TESTING else 15)  # noqa TESTING defined in settings_common (flake8)
 CELERY_RESULT_BACKEND = BROKER_URL
 CACHES = {
     'default': {
@@ -82,7 +82,7 @@ CACHES = {
 
 ALLOWED_HOSTS = ['*']
 
-INSTALLED_APPS += (
+INSTALLED_APPS += (  # noqa INSTALLED_APPS defined in settings_common (flake8)
     'casepropods.family_connect_registration.plugin.RegistrationPlugin',
     'casepropods.family_connect_subscription.plugin.SubscriptionPlugin',
 )
