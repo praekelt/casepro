@@ -54,6 +54,8 @@ IDENTITY_ADDRESS_TYPE = os.environ.get('IDENTITY_ADDRESS_TYPE',
 IDENTITY_LANGUAGE_FIELD = os.environ.get('IDENTITY_LANGUAGE_FIELD',
                                          'language')
 
+SITE_MAX_MESSAGE_CHARS = 640  # the max value for this is 800
+
 # Time until a case is re-assigned (specified in minutes)
 case_response_required_time_str = os.environ.get(
     'SITE_CASE_RESPONSE_REQUIRED_TIME')
