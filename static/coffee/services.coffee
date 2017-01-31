@@ -45,8 +45,11 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       params = @_searchToParams(search)
       if !search.before
         params.before = utils.formatIso8601(before)
+      if search.last_refresh
+        params.after = utils.formatIso8601(search.last_refresh)
       params.page = page
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
+        console.log response.data.results
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
       )
@@ -137,7 +140,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       return {
         folder: search.folder,
         text: search.text,
-        after: if search.last_refresh then utils.formatIso8601(search.last_refresh) else utils.formatIso8601(search.after),
+        after: utils.formatIso8601(search.after),
         before: utils.formatIso8601(search.before),
         groups: if search.groups then (g.id for g in search.groups) else null,
         contact: if search.contact then search.contact.id else null,
