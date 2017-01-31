@@ -51,7 +51,6 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       params.page = page
 
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
-        console.log response.data.results
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
       )
