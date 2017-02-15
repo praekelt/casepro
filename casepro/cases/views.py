@@ -70,7 +70,8 @@ class CaseCRUDL(SmartCRUDL):
             context['context_data_json'] = json_encode({
                 'fields': [f.as_json() for f in fields],
                 'case_obj': {'id': case.id},
-                'all_labels': [l.as_json() for l in labels]
+                'all_labels': [l.as_json() for l in labels],
+                'message_id': case.initial_message.backend_id
             })
 
             context['can_update'] = can_update
