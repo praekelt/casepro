@@ -14,7 +14,7 @@ RUN mkdir -p /var/log/supervisor
 COPY docker/docker-start.sh /scripts/
 RUN chmod a+x /scripts/docker-start.sh
 
-COPY docker/nginx.conf /etc/nginx/sites-enabled/django.conf
+COPY docker/nginx.conf /etc/nginx/conf.d/django.conf
 COPY docker/supervisor.conf /etc/supervisor/conf.d/molo.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 
@@ -22,6 +22,8 @@ EXPOSE 8000
 
 CMD ["docker-start.sh"]
 
-RUN pip install -r pip-freeze.txt && pip install -r pip-freeze-praekelt.txt
-RUN npm install -g less coffee-script
-RUN django-admin collectstatic --noinput
+RUN pip install -r pip-freeze.txt && \
+    pip install -r pip-freeze-praekelt.txt && \
+    npm install -g less coffee-script && \
+    django-admin collectstatic --noinput &&\
+    USE_DEFAULT_CACHE=True django-admin compress
