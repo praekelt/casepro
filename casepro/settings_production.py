@@ -11,7 +11,7 @@ if os.environ.get('DEBUG', 'False') == 'True':  # envvars are strings
 else:
     DEBUG = False
 TEMPLATE_DEBUG = DEBUG
-
+COMPRESS_OFFLINE = True
 SEND_EMAILS = True
 
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost:8000')
@@ -81,6 +81,15 @@ CACHES = {
         }
     }
 }
+
+if os.environ.get('USE_DEFAULT_CACHE', 'False') == 'True':
+    # Use Django's default cache
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
+
 
 ALLOWED_HOSTS = ['*']
 
