@@ -90,6 +90,9 @@ if os.environ.get('USE_DEFAULT_CACHE', 'False') == 'True':
         }
     }
 
+# settings_common currently defines Nyaruka contact details. We use sentry.
+ADMINS = []
+
 
 ALLOWED_HOSTS = ['*']
 
