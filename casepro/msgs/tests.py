@@ -1137,7 +1137,6 @@ class MessageTest(BaseCasesTest):
             'labels': [{'id': self.aids.pk, 'name': "AIDS"}],
             'flagged': False,
             'archived': False,
-            'lock': False,
             'flow': False,
             'case': None
         })
@@ -1233,21 +1232,21 @@ class MessageCRUDLTest(BaseCasesTest):
         msg = self.create_message(self.unicef, 101, self.ann, "Normal", [self.aids, self.pregnancy])
 
         # The message is not locked
-        self.assertFalse(msg.get_lock(self.user1.id))
+        self.assertFalse(msg.get_lock(self.user1))
 
         # The message is locked by the same user
         msg.locked_by = self.user2
         msg.locked_on = now()
         msg.save()
 
-        self.assertFalse(msg.get_lock(self.user2.id))
+        self.assertFalse(msg.get_lock(self.user2))
 
         # The message is locked by another user
         msg.locked_by = self.user1
         msg.locked_on = now()
         msg.save()
 
-        self.assertNotEqual(msg.get_lock(self.user2.id), False)
+        self.assertNotEqual(msg.get_lock(self.user2), False)
 
     def test_lock_messages(self):
         def get_url(action):
@@ -1265,7 +1264,7 @@ class MessageCRUDLTest(BaseCasesTest):
 
         # Can't lock becuase it is locked by another user
         msg.locked_by = self.user1
-        msg.locked_at = now()
+        msg.locked_on = now()
         msg.save()
 
         response = self.url_post_json('unicef', get_url('lock'), {'messages': [101]})
@@ -1274,7 +1273,7 @@ class MessageCRUDLTest(BaseCasesTest):
         self.assertEqual(response.json['messages'], [101])
 
         msg.locked_by = self.admin
-        msg.locked_at = now()
+        msg.locked_on = now()
         msg.save()
 
         response = self.url_post_json('unicef', get_url('unlock'), {'messages': [101]})

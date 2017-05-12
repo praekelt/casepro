@@ -324,7 +324,7 @@ class Message(models.Model):
 
     case = models.ForeignKey('cases.Case', null=True, related_name="incoming_messages")
 
-    locked_on = models.DateTimeField(auto_now=True, null=True, help_text="Last action taken on this message")
+    locked_on = models.DateTimeField(null=True, help_text="Last action taken on this message")
 
     locked_by = models.ForeignKey(User, null=True, related_name='actioned_messages')
 
@@ -387,15 +387,15 @@ class Message(models.Model):
             if folder == MessageFolder.unlabelled:
                 raise ValueError("Unlabelled folder is only accessible to administrators")
 
-        # only show flagged messages in flagged folder
-        if folder == MessageFolder.flagged:
-            queryset = queryset.filter(is_flagged=True)
-
         # if this is a refresh we want everything with new actions
         if last_refresh:
             queryset = queryset.filter(actions__created_on__gt=last_refresh) |\
                        queryset.filter(locked_on__gt=last_refresh)
         else:
+            # only show flagged messages in flagged folder
+            if folder == MessageFolder.flagged:
+                queryset = queryset.filter(is_flagged=True)
+
             # archived messages can be implicitly or explicitly included depending on folder
             if folder == MessageFolder.archived:
                 queryset = queryset.filter(is_archived=True)
@@ -429,10 +429,10 @@ class Message(models.Model):
         """
         return self.actions.select_related('created_by', 'label').order_by('-pk')
 
-    def get_lock(self, user_id):
-        if self.locked_on and self.locked_by:
+    def get_lock(self, user):
+        if self.locked_on and self.locked_by_id:
             if self.locked_on > (now() - timedelta(seconds=MESSAGE_LOCK_SECONDS)):
-                if self.locked_by.id != user_id:
+                if self.locked_by_id != user.id:
                     diff = (self.locked_on + timedelta(seconds=MESSAGE_LOCK_SECONDS)) - now()
                     return diff.seconds
 
@@ -544,7 +544,7 @@ class Message(models.Model):
 
             MessageAction.create(org, user, messages, MessageAction.RESTORE)
 
-    def as_json(self, user_id=None):
+    def as_json(self):
         """
         Prepares this message for JSON serialization
         """
@@ -557,8 +557,7 @@ class Message(models.Model):
             'flagged': self.is_flagged,
             'archived': self.is_archived,
             'flow': self.type == self.TYPE_FLOW,
-            'case': self.case.as_json(full=False) if self.case else None,
-            'lock': self.get_lock(user_id) if user_id else False,
+            'case': self.case.as_json(full=False) if self.case else None
         }
 
     def __str__(self):

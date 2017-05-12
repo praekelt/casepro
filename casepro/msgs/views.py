@@ -208,8 +208,6 @@ class MessageCRUDL(SmartCRUDL):
             user = self.request.user
             page = int(self.request.GET.get('page', 1))
 
-            context['user_id'] = user.id
-
             search = self.derive_search()
 
             # this is a refresh of messages
@@ -237,8 +235,7 @@ class MessageCRUDL(SmartCRUDL):
             for m in context['object_list']:
                 msg = m.as_json()
 
-                if context.get('user_id'):
-                    msg['lock'] = m.get_lock(context.get('user_id'))
+                msg['lock'] = m.get_lock(self.request.user)
 
                 results.append(msg)
 
@@ -269,22 +266,22 @@ class MessageCRUDL(SmartCRUDL):
 
             if action == 'lock':
                 for message in messages:
-                    if message.get_lock(request.user.id):
+                    if message.get_lock(request.user):
                         lock_messages.append(message.backend_id)
 
                 if not lock_messages:
                     for message in messages:
                         message.locked_on = timezone.now()
                         message.locked_by = user
-                        message.save()
+                        message.save(update_fields=['locked_on', 'locked_by'])
 
             elif action == 'unlock':
                 for message in messages:
-                    message.locked_on = None
+                    message.locked_on = timezone.now()
                     message.locked_by = None
-                    message.save()
+                    message.save(update_fields=['locked_on', 'locked_by'])
 
-            else:
+            else:  # pragma: no cover
                 return HttpResponseBadRequest("Invalid action: %s", action)
 
             return JsonResponse({'messages': lock_messages}, encoder=JSONEncoder)
