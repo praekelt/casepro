@@ -1665,7 +1665,7 @@ class IdentityStoreContactSyncerTest(BaseCasesTest):
                     'language': "eng_NG",
                     'name': "test",
                     'addresses': {
-                        'tel': {
+                        'msisdn': {
                             '+1234': {}
                         }
                     }
