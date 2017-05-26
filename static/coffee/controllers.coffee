@@ -407,16 +407,9 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
   #----------------------------------------------------------------------------
 
   $scope.onToggleMessageFlag = (message) ->
-    if $scope.folder == 'flagged'
-      UtilsService.confirmModal('Are you sure you want to un-flag this message?').then(() ->
-         MessageService.bulkFlag([message], !message.flagged).then(() ->
-          $scope.updateItems()
-        )
-      )
-    else
-      MessageService.bulkFlag([message], !message.flagged).then(() ->
-        $scope.updateItems()
-      )
+    MessageService.bulkFlag([message], !message.flagged).then(() ->
+      $scope.updateItems()
+    )
 
   $scope.onReplyToMessage = (message) ->
     MessageService.checkLock([message]).then((results) ->
