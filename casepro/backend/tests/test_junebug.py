@@ -269,19 +269,6 @@ class JunebugBackendTest(BaseCasesTest):
         self.assertEqual(contact.uuid, "test_id")
         self.assertEqual(contact.name, "test")
 
-    def test_language_truncated(self):
-        """
-        Language should be truncated to 3 characters
-        """
-        json_data = {
-            'details': {
-                'language': "english_NG",
-                'addresses': {},
-            }}
-        contact = IdentityStoreContact(json_data=json_data)
-
-        self.assertEqual(contact.language, "eng")
-
     def test_pull_fields(self):
         """
         Pulling all the fields should be a noop.
