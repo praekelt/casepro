@@ -24,8 +24,7 @@ from casepro.pods import registry as pod_registry
 from casepro.pods.tests.utils import DummyPodPlugin
 
 from .context_processors import sentry_dsn
-from .models import AccessLevel, Case, CaseAction, CaseExport, CaseFolder, Partner, SystemUser
-from .tasks import reassign_case
+from .models import AccessLevel, Case, CaseAction, CaseExport, CaseFolder, Partner
 
 
 class CaseTest(BaseCasesTest):
@@ -293,35 +292,6 @@ class CaseTest(BaseCasesTest):
         self.assertEqual(set(Case.get_closed(self.unicef)), {case2})
         self.assertEqual(set(Case.get_closed(self.unicef, user=self.user1, label=self.pregnancy)), {case2})
 
-    @override_settings(SITE_CASE_RESPONSE_REQUIRED_TIME=1440)
-    def test_get_all_passed_response_time(self):
-        bob = self.create_contact(self.unicef, 'C-002', "Bob")
-
-        msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
-        msg2 = self.create_message(self.unicef, 234, bob, "Hello 2", [self.aids, self.pregnancy])
-
-        case1 = self.create_case(self.unicef, self.ann, self.moh, msg1, [self.aids])
-        case2 = self.create_case(self.unicef, bob, self.who, msg2, [self.aids, self.pregnancy])
-
-        # test with no auto_reassign_on value set
-        self.assertEqual(set(Case.get_all_passed_response_time()), set())
-
-        # test with specified date
-        case1.auto_reassign_on = datetime(2016, 8, 5, 10, 0, tzinfo=pytz.UTC)
-        case1.save()
-        case2.auto_reassign_on = datetime(2016, 8, 6, 14, 0, tzinfo=pytz.UTC)
-        case2.save()
-        check_datetime = datetime(2016, 8, 6, 12, 0, tzinfo=pytz.UTC)
-        self.assertEqual(set(Case.get_all_passed_response_time(check_datetime)), {case1})
-
-        # test with computed date
-        self.assertEqual(set(Case.get_all_passed_response_time()), {case1, case2})
-
-        # test with closed case
-        case2.closed_on = timezone.now()
-        case2.save()
-        self.assertEqual(set(Case.get_all_passed_response_time()), {case1})
-
     def test_get_open_for_contact_on(self):
         d0 = datetime(2014, 1, 5, 0, 0, tzinfo=pytz.UTC)
         d1 = datetime(2014, 1, 10, 0, 0, tzinfo=pytz.UTC)
@@ -462,23 +432,6 @@ class CaseTest(BaseCasesTest):
         self.assertEqual(case.access_level(self.user1), AccessLevel.update)  # user from assigned partner can update
         self.assertEqual(case.access_level(self.user3), AccessLevel.read)  # user from other partner can read bc labels
         self.assertEqual(case.access_level(self.user4), AccessLevel.none)  # user from different org
-
-    def test_has_passed_response_time(self):
-        bob = self.create_contact(self.unicef, 'C-002', "Bob")
-
-        msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
-        msg2 = self.create_message(self.unicef, 234, bob, "Hello 2", [self.aids, self.pregnancy])
-
-        case1 = self.create_case(self.unicef, self.ann, self.moh, msg1, [self.aids])
-        case2 = self.create_case(self.unicef, bob, self.who, msg2, [self.aids, self.pregnancy])
-
-        # test with specified date
-        case1.auto_reassign_on = datetime(2016, 8, 5, 10, 0, tzinfo=pytz.UTC)
-        case1.save()
-        case2.auto_reassign_on = timezone.now() + timedelta(minutes=120)
-        case2.save()
-        self.assertTrue(case1.has_passed_response_time)
-        self.assertFalse(case2.has_passed_response_time)
 
 
 @modify_settings(INSTALLED_APPS={'append': 'casepro.pods.tests.utils.DummyPodPlugin'})
@@ -647,7 +600,6 @@ class CaseCRUDLTest(BaseCasesTest):
         response = self.url_post_json('unicef', url, {'note': "Hey guys"})
         self.assertEqual(response.status_code, 302)
 
-    @override_settings(SITE_CASE_RESPONSE_REQUIRED_TIME=1440)
     def test_reassign(self):
         url = reverse('cases.case_reassign', args=[self.case.pk])
 
@@ -666,9 +618,6 @@ class CaseCRUDLTest(BaseCasesTest):
         self.case.refresh_from_db()
         self.assertEqual(self.case.assignee, self.who)
         self.assertEqual(self.case.user_assignee, self.user3)
-        self.assertIsNotNone(self.case.auto_reassign_on)
-        self.assertEqual(self.case.last_assignee, self.moh)
-        self.assertEqual(self.case.last_user_assignee, self.user1)
 
         # only user from assigned partner can re-assign
         response = self.url_post_json('unicef', url, {'assignee': self.moh.pk})
@@ -1176,51 +1125,6 @@ class CaseExportCRUDLTest(BaseCasesTest):
         ], pytz.UTC)
 
 
-class SystemUserTest(BaseCasesTest):
-    def setUp(self):
-        super(SystemUserTest, self).setUp()
-
-        self.ann = self.create_contact(self.unicef, 'C-001', "Ann")
-        d0 = datetime(2014, 1, 2, 12, 0, tzinfo=pytz.UTC)
-        msg1 = self.create_message(self.unicef, 101, self.ann, "Test Message", [self.aids], created_on=d0)
-        self.case = self.create_case(self.unicef, self.ann, self.moh, msg1)
-
-    def test_get_or_create_no_user(self):
-        # SystemUser.get_or_create() should return an existing instance or create a new one if none exists
-        self.assertEqual(SystemUser.objects.count(), 0)
-        user1 = SystemUser.get_or_create()
-        self.assertEqual(SystemUser.objects.count(), 1)
-        user2 = SystemUser.get_or_create()
-        self.assertEqual(SystemUser.objects.count(), 1)
-        self.assertEqual(user1, user2)
-
-    def test_add_note_as_system_user(self):
-        # SystemUsers should be able to access methods wrapped by the decorator
-        sysUser = SystemUser.get_or_create()
-        self.case.add_note(sysUser, "test note")
-
-        actions = CaseAction.objects.all()
-        self.assertEqual(len(actions), 1)
-        self.assertEqual(actions[0].created_by.pk, sysUser.pk)
-        self.assertEqual(actions[0].note, "test note")
-
-    def test_reassign_as_system_user(self):
-        # System reassigns case
-        self.assertEqual(self.case.assignee, self.moh)
-        partner = self.create_partner(self.unicef, "Internal", "Internal", None, [], False)
-        sysUser = SystemUser.get_or_create()
-        self.case.reassign(sysUser, partner)
-        self.case.refresh_from_db()
-        # ensure system user reassigns don't set an auto reassign datetime
-        self.assertEqual(self.case.auto_reassign_on, None)
-
-        actions = CaseAction.objects.all()
-        self.assertEqual(len(actions), 1)
-        self.assertEqual(actions[0].created_by.pk, sysUser.pk)
-        self.assertEqual(actions[0].assignee, partner)
-        self.assertEqual(actions[0].action, 'A')
-
-
 class InboxViewsTest(BaseCasesTest):
     def test_inbox(self):
         url = reverse('cases.inbox')
@@ -1506,48 +1410,3 @@ class InternalViewsTest(BaseCasesTest):
 
             response = self.url_get('unicef', url)
             self.assertEqual(response.status_code, 500)
-
-
-class TasksTest(BaseCasesTest):
-    def setUp(self):
-        super(TasksTest, self).setUp()
-
-        self.ann = self.create_contact(self.unicef, 'C-001', "Ann",
-                                       fields={'age': "34"},
-                                       groups=[self.females, self.reporters, self.registered])
-
-    @override_settings(SITE_CASE_RESPONSE_REQUIRED_TIME=1440)
-    def test_reassign_case(self):
-        bob = self.create_contact(self.unicef, 'C-002', "Bob")
-
-        msg1 = self.create_message(self.unicef, 123, self.ann, "Hello 1", [self.aids])
-        msg2 = self.create_message(self.unicef, 234, bob, "Hello 2", [self.aids, self.pregnancy])
-
-        case1 = self.create_case(self.unicef, self.ann, self.moh, msg1, [self.aids])
-        case2 = self.create_case(self.unicef, bob, self.who, msg2, [self.aids, self.pregnancy])
-
-        case1.reassign(self.user1, self.who)
-        # manually adjust the reassigned date to an expired date
-        case1.auto_reassign_on = datetime(2016, 8, 5, 10, 0, tzinfo=pytz.UTC)
-        case1.save()
-        reassign_case(case1.pk)
-        case1.refresh_from_db()
-        self.assertEqual(case1.assignee, self.moh)
-
-        # ensure that cases last reassigned by the system are not reassigned again by the system
-        action = case1.actions.filter(action=CaseAction.REASSIGN).latest('created_on')
-        d1 = datetime(2016, 8, 6, 10, 0, tzinfo=pytz.UTC)
-        case1.auto_reassign_on = d1
-        case1.save()
-        reassign_case(case1.pk)
-        case1.refresh_from_db()
-        self.assertEqual(d1, case1.auto_reassign_on)
-        self.assertEqual(case1.assignee, self.moh)
-        action2 = case1.actions.filter(action=CaseAction.REASSIGN).latest('created_on')
-        self.assertEqual(action, action2)
-
-        # don't reassign a case if it hasn't passed the expected window
-        case2.reassign(self.user3, self.moh)
-        reassign_case(case2.pk)
-        case2.refresh_from_db()
-        self.assertEqual(case1.assignee, self.moh)

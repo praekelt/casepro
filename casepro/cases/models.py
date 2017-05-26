@@ -4,14 +4,11 @@ import six
 
 from dash.orgs.models import Org
 from dash.utils import intersection
-from datetime import timedelta
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import Q, Count, Prefetch
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.timezone import now
 from django.utils.translation import ugettext_lazy as _
 from enum import Enum, IntEnum
 from itertools import chain
@@ -114,15 +111,6 @@ class Partner(models.Model):
         return self.name
 
 
-class SystemUser(User):
-
-    @classmethod
-    def get_or_create(cls):
-        if cls.objects.count() > 0:
-            return cls.objects.first()
-        return cls.objects.create(username="System", first_name="System")
-
-
 class case_action(object):
     """
     Helper decorator for case action methods that should check the user is allowed to update the case
@@ -133,8 +121,6 @@ class case_action(object):
 
     def __call__(self, func):
         def wrapped(case, user, *args, **kwargs):
-            if isinstance(user, SystemUser):
-                return func(case, user, *args, **kwargs)
             access = case.access_level(user)
             if (access == AccessLevel.update) or (not self.require_update and access == AccessLevel.read):
                 result = func(case, user, *args, **kwargs)
@@ -175,13 +161,6 @@ class Case(models.Model):
     closed_on = models.DateTimeField(null=True,
                                      help_text="When this case was closed")
 
-    auto_reassign_on = models.DateTimeField(null=True, help_text="When this case should be reassigned")
-
-    last_assignee = models.ForeignKey(Partner, null=True, related_name='previously_assigned_cases')
-
-    last_user_assignee = models.ForeignKey(User, null=True,
-                                           on_delete=models.SET_NULL, related_name='previously_assigned_cases')
-
     watchers = models.ManyToManyField(User, related_name='watched_cases',
                                       help_text="Users to be notified of case activity")
 
@@ -199,15 +178,6 @@ class Case(models.Model):
             queryset = queryset.filter(labels=label)
 
         return queryset.distinct()
-
-    @classmethod
-    def get_all_passed_response_time(cls, check_datetime=None):
-
-        if check_datetime is None:
-            check_datetime = now()
-
-        queryset = cls.objects.filter(closed_on=None, auto_reassign_on__lte=check_datetime)
-        return queryset
 
     @classmethod
     def get_open(cls, org, user=None, label=None):
@@ -387,19 +357,9 @@ class Case(models.Model):
     def reassign(self, user, partner, note=None, user_assignee=None):
         from casepro.profiles.models import Notification
 
-        if isinstance(user, SystemUser) or hasattr(user, 'systemuser'):
-            # don't set an auto reassign datetime when reassigning as the system user
-            self.auto_reassign_on = None
-        else:
-            response_required_in = getattr(settings, 'SITE_CASE_RESPONSE_REQUIRED_TIME', None)
-            if response_required_in is not None:
-                self.auto_reassign_on = now() + timedelta(minutes=response_required_in)
-
-        self.last_assignee = self.assignee
-        self.last_user_assignee = self.user_assignee
         self.assignee = partner
         self.user_assignee = user_assignee
-        self.save()
+        self.save(update_fields=('assignee', 'user_assignee'))
 
         action = CaseAction.create(
             self, user, CaseAction.REASSIGN, assignee=partner, note=note, user_assignee=user_assignee)
@@ -487,10 +447,6 @@ class Case(models.Model):
     @property
     def is_closed(self):
         return self.closed_on is not None
-
-    @property
-    def has_passed_response_time(self):
-        return now() >= self.auto_reassign_on
 
     def as_json(self, full=True):
         if full:
