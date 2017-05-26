@@ -60,7 +60,7 @@ describe('modals:', () ->
   )
 
   it('AssignModalController', () ->
-    $controller('AssignModalController', {$scope: $scope, $uibModalInstance: modalInstance, title: "Title", prompt: "OK?", partners: [test.moh, test.who], users: [test.user1]})
+    $controller('AssignModalController', {$scope: $scope, $uibModalInstance: modalInstance, title: "Title", prompt: "OK?", partners: [test.moh, test.who]})
 
     expect($scope.fields.assignee).toEqual(test.moh)
     expect($scope.fields.user).toEqual({id: null, name: "-- Anyone --"})
@@ -204,7 +204,7 @@ describe('modals:', () ->
   )
 
   it('NewCaseModalController', () ->
-    $controller('NewCaseModalController', {$scope: $scope, $uibModalInstance: modalInstance, summaryInitial: "Hello", summaryMaxLength: 10, partners: [test.moh, test.who], users: [test.user1]})
+    $controller('NewCaseModalController', {$scope: $scope, $uibModalInstance: modalInstance, summaryInitial: "Hello", summaryMaxLength: 10, partners: [test.moh, test.who]})
 
     expect($scope.fields.summary).toEqual({val: "Hello", maxLength: 10})
     expect($scope.fields.assignee).toEqual({val: test.moh})

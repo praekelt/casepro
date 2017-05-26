@@ -10,7 +10,6 @@ describe('directives:', () ->
   beforeEach(() ->
     module('templates')
     module('cases')
-    module('templates')
 
     inject((_$compile_, _$rootScope_, _$templateCache_, _$q_, _$filter_) ->
       $compile = _$compile_
