@@ -53,7 +53,6 @@ SITE_ALLOW_NO_ORG = ('orgs_ext.org_create', 'orgs_ext.org_update', 'orgs_ext.org
 SITE_ORGS_STORAGE_ROOT = 'orgs'
 SITE_EXTERNAL_CONTACT_URL = 'http://localhost:8001/contact/read/%s/'
 SITE_BACKEND = 'casepro.backend.NoopBackend'
-SITE_CASE_RESPONSE_REQUIRED_TIME = None  # specified in minutes, None to disable
 SITE_HIDE_CONTACT_FIELDS = []  # Listed fields should not be displayed
 SITE_CONTACT_DISPLAY = "name"  # Overrules SITE_HIDE_CONTACT_FIELDS Options: 'name', 'uuid' or 'urns'
 SITE_ALLOW_CASE_WITHOUT_MESSAGE = True
@@ -502,10 +501,6 @@ CELERYBEAT_SCHEDULE = {
     'send-notifications': {
         'task': 'casepro.profiles.tasks.send_notifications',
         'schedule': timedelta(minutes=1),
-    },
-    'reassign-case-passed-response-time': {
-        'task': 'casepro.cases.tasks.get_all_cases_passed_response_time',
-        'schedule': timedelta(minutes=60),
     },
 }
 

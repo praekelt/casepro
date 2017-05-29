@@ -492,7 +492,6 @@ describe('controllers:', () ->
           checkLock = spyOnPromise($q, $scope, MessageService, 'checkLock')
           newCaseModal = spyOnPromise($q, $scope, UtilsService, 'newCaseModal')
           openCase = spyOnPromise($q, $scope, CaseService, 'open')
-          fetchUsersForPartner = spyOnPromise($q, $scope, UserService, 'fetchInPartner')
           spyOn(UtilsService, 'navigate')
 
           $scope.onCaseFromMessage(test.msg1)
