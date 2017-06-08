@@ -465,7 +465,10 @@ LOGOUT_URL = "/users/logout/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-AUTHENTICATION_BACKENDS = ('smartmin.backends.CaseInsensitiveBackend',)
+AUTHENTICATION_BACKENDS = (
+    'smartmin.backends.CaseInsensitiveBackend',
+    'guardian.backends.ObjectPermissionBackend',
+)
 
 ANONYMOUS_USER_ID = -1
 
