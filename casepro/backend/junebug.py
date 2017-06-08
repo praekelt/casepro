@@ -273,8 +273,13 @@ class JunebugBackend(BaseBackend):
     def __init__(self):
         self.identity_store = IdentityStore(
             settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
-        self.message_sender = JunebugMessageSender(
-            settings.JUNEBUG_API_ROOT, settings.JUNEBUG_CHANNEL_ID, settings.JUNEBUG_FROM_ADDRESS, self.identity_store)
+        self.message_senders = dict([
+            (channel_id, JunebugMessageSender(
+                channel_info['API_ROOT'],
+                channel_id,
+                channel_info['FROM_ADDRESS'],
+                self.identity_store))
+            for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """
@@ -357,7 +362,16 @@ class JunebugBackend(BaseBackend):
         :param as_broadcast: whether outgoing messages differ only by recipient and so can be sent as single broadcast
         """
         for message in outgoing:
-            self.message_sender.send_message(message)
+            self.send_message(message)
+
+    def send_message(self, outgoing):
+        message = outgoing.reply_to
+        if message:
+            channel_id = message.metadata.get('channel_id') or settings.JUNEBUG_DEFAULT_CHANNEL_ID
+        else:
+            channel_id = settings.JUNEBUG_DEFAULT_CHANNEL_ID
+        message_sender = self.message_senders[channel_id]
+        return message_sender.send_message(outgoing)
 
     @staticmethod
     def _identity_equal(identity, contact):
@@ -580,7 +594,12 @@ def received_junebug_message(request):
                 with transaction.atomic():
                     msg = Message.objects.create(
                         org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                        text=(data.get('content') or ''), created_on=timestamp, has_labels=True)
+                        text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
+                        metadata={
+                            'backend': 'casepro.backend.junebug.JunebugBackend',
+                            'channel_id': data['channel_id'],
+                            'message_id': data['message_id'],
+                        })
                 break
             except IntegrityError:
                 pass

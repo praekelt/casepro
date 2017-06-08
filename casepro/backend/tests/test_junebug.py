@@ -11,7 +11,7 @@ from datetime import datetime
 from django.conf import settings
 from django.db import IntegrityError
 from django.http import HttpResponse
-from django.test import override_settings, RequestFactory
+from django.test import override_settings, RequestFactory, tag
 
 from casepro.contacts.models import Contact, Field, Group
 from casepro.msgs.models import Label, Message
@@ -23,6 +23,7 @@ from ..junebug import (
     received_junebug_message, token_auth_required, receive_identity_store_optout)
 
 
+@tag('junebug')
 class JunebugBackendTest(BaseCasesTest):
     def setUp(self):
         super(JunebugBackendTest, self).setUp()
@@ -509,7 +510,14 @@ class JunebugBackendTest(BaseCasesTest):
         self.assertEqual(len(responses.calls), 3)
 
     @responses.activate
-    @override_settings(JUNEBUG_FROM_ADDRESS="+4321")
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        })
     def test_outgoing_from_address(self):
         """
         Setting the from address in the settings should set the from address in the request to Junebug.
@@ -539,7 +547,14 @@ class JunebugBackendTest(BaseCasesTest):
 
     @responses.activate
     @override_settings(
-        JUNEBUG_FROM_ADDRESS="+4321", JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        },
+        JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
         JUNEBUG_HUB_AUTH_TOKEN='sample-token')
     def test_outgoing_with_hub_push_enabled(self):
         def message_send_callback(request):
@@ -594,7 +609,14 @@ class JunebugBackendTest(BaseCasesTest):
 
     @responses.activate
     @override_settings(
-        JUNEBUG_FROM_ADDRESS="+4321", JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        },
+        JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
         JUNEBUG_HUB_AUTH_TOKEN='sample-token')
     def test_outgoing_with_hub_push_enabled_no_reply_to(self):
         def message_send_callback(request):
@@ -882,6 +904,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
                 'content': "test message",
                 'from': "+1234",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
@@ -908,6 +931,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
                 'content': "test message",
                 'from': "27741234567",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
@@ -963,6 +987,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
                 'content': "test message",
                 'from': "+1234",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
@@ -989,6 +1014,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'content': "test message",
                 'from': "+1234",
                 'timestamp': "2016.11.21 07:30:05.123456",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
@@ -1023,6 +1049,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'content': "test message",
                 'from': "+1234",
                 'timestamp': "2016.11.21 07:30:05.123456",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
@@ -1058,6 +1085,7 @@ class JunebugInboundViewTest(BaseCasesTest):
                 'content': "test message",
                 'from': "+1234",
                 'timestamp': "2016.11.21 07:30:05.123456",
+                'channel_id': 'channel_id',
             })
         )
         request.org = self.unicef
