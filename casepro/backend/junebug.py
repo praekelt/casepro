@@ -13,6 +13,7 @@ import random
 import requests
 import pytz
 import six
+import logging
 
 from . import BaseBackend
 from ..contacts.models import Contact, URN
@@ -23,6 +24,9 @@ from dash.utils import is_dict_equal
 from dash.utils.sync import BaseSyncer, sync_local_to_changes
 
 from itertools import chain
+
+
+logger = logging.getLogger(__name__)
 
 
 class HubMessageSender(object):
@@ -367,10 +371,16 @@ class JunebugBackend(BaseBackend):
     def send_message(self, outgoing):
         message = outgoing.reply_to
         if message:
-            channel_id = message.metadata.get('channel_id') or settings.JUNEBUG_DEFAULT_CHANNEL_ID
+            channel_id = message.metadata.get('channel_id')
         else:
             channel_id = settings.JUNEBUG_DEFAULT_CHANNEL_ID
-        message_sender = self.message_senders[channel_id]
+
+        if channel_id in self.message_senders:
+            message_sender = self.message_senders[channel_id]
+        else:
+            if channel_id:
+                logger.warning('Using default chanenl as channel %s is not configured.' % (channel_id,))
+            message_sender = self.message_senders[settings.JUNEBUG_DEFAULT_CHANNEL_ID]
         return message_sender.send_message(outgoing)
 
     @staticmethod
@@ -570,6 +580,11 @@ def received_junebug_message(request):
     contact = Contact.get_or_create(request.org, identity.get('id'))
 
     message_id = uuid_to_int(data.get('message_id'))
+    metadata = {
+        'backend': 'casepro.backend.junebug.JunebugBackend',
+        'channel_id': data['channel_id'],
+        'message_id': data['message_id'],
+    }
 
     if 'timestamp' in data:
         timestamp = dateutil.parser.parse(data['timestamp'])
@@ -584,7 +599,8 @@ def received_junebug_message(request):
         with transaction.atomic():
             msg = Message.objects.create(
                 org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                text=(data.get('content') or ''), created_on=timestamp, has_labels=True)
+                text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
+                metadata=metadata)
     except IntegrityError as e:
         # If there's a clash, try to generate a random one that doesn't result in a clash
         msg = None
@@ -595,11 +611,7 @@ def received_junebug_message(request):
                     msg = Message.objects.create(
                         org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
                         text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
-                        metadata={
-                            'backend': 'casepro.backend.junebug.JunebugBackend',
-                            'channel_id': data['channel_id'],
-                            'message_id': data['message_id'],
-                        })
+                        metadata=metadata)
                 break
             except IntegrityError:
                 pass

@@ -1057,6 +1057,214 @@ class JunebugInboundViewTest(BaseCasesTest):
         resp_data = json_decode(response.content)
         self.assertNotEqual(resp_data['id'], msg.id)
 
+    @responses.activate
+    def test_inbound_sets_metadata(self):
+        query = "?details__addresses__msisdn=%2B1234"
+        url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
+        responses.add_callback(
+            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
+            content_type="application/json")
+
+        request = self.factory.post(
+            self.url, content_type="application/json", data=json.dumps({
+                'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
+                'content': "test message",
+                'from': "+1234",
+                'channel_id': 'channel_id',
+            })
+        )
+        request.org = self.unicef
+        response = received_junebug_message(request)
+        resp_data = json_decode(response.content)
+
+        message = Message.objects.get(backend_id=resp_data['id'])
+        self.assertEqual(message.text, "test message")
+        self.assertEqual(message.metadata, {
+            'channel_id': 'channel_id',
+            'message_id': '35f3336d4a1a46c7b40cd172a41c510d',
+            'backend': 'casepro.backend.junebug.JunebugBackend',
+        })
+
+    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234'):
+        def junebug_callback(request):
+            data = json_decode(request.body)
+            self.assertEqual(data, {'to': to_addr, 'from': from_addr, 'content': content})
+            headers = {'Content-Type': "application/json"}
+            resp = {
+                'status': 201,
+                'code': "created",
+                'description': "message submitted",
+                'result': {
+                    'id': message_id,
+                },
+            }
+            return (201, headers, json.dumps(resp))
+
+        responses.add_callback(
+            responses.POST, url, callback=junebug_callback,
+            content_type="application/json")
+
+    @responses.activate
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://bad.example.org:8080/',
+                'FROM_ADDRESS': '+4321',
+            },
+            'junebug-channel-id': {
+                'API_ROOT': 'http://good.example.org:8080/',
+                'FROM_ADDRESS': '+6789',
+            }
+        })
+    def test_outgoing_affinity(self):
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+        message = self.create_message(self.unicef, 1000, bob, 'Is this great?', metadata={
+            'channel_id': 'junebug-channel-id',
+        })
+        outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=message)
+
+        self.assertJunebugMessageSent(
+            "http://good.example.org:8080/channels/junebug-channel-id/messages/",
+            to_addr='+1234', from_addr='+6789', content="That's great")
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
+            content_type="application/json", json={
+                'count': 1,
+                'next': None,
+                'previous': None,
+                'results': [
+                    {
+                        'address': "+1234",
+                    }
+                ]
+            })
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/" % bob.uuid,
+            content_type="application/json", json={
+                'id': bob.uuid,
+                'version': 1,
+                'details': {
+                },
+                'communicate_through': None,
+                'operator': None,
+                'created_at': "2016-06-23T13:03:18.674016Z",
+                'created_by': 1,
+                'updated_at': "2016-06-23T13:03:18.674043Z",
+                'updated_by': 1
+            })
+
+        self.backend = JunebugBackend()
+        self.backend.push_outgoing(self.unicef, [outgoing])
+        self.assertEqual(len(responses.calls), 3)
+
+    @responses.activate
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://default.example.org:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        })
+    def test_outgoing_bad_affinity(self):
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+        message = self.create_message(self.unicef, 1000, bob, 'Is this great?', metadata={
+            'channel_id': 'junebug-channel-id',
+        })
+        outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=message)
+
+        # NOTE: If an unknown channel_id is found, it should fallback to the default channel_id
+        self.assertJunebugMessageSent(
+            "http://default.example.org:8080/channels/replace-me/messages/",
+            to_addr='+1234', from_addr='+4321', content="That's great")
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
+            content_type="application/json", json={
+                'count': 1,
+                'next': None,
+                'previous': None,
+                'results': [
+                    {
+                        'address': "+1234",
+                    }
+                ]
+            })
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/" % bob.uuid,
+            content_type="application/json", json={
+                'id': bob.uuid,
+                'version': 1,
+                'details': {
+                },
+                'communicate_through': None,
+                'operator': None,
+                'created_at': "2016-06-23T13:03:18.674016Z",
+                'created_by': 1,
+                'updated_at': "2016-06-23T13:03:18.674043Z",
+                'updated_by': 1
+            })
+
+        self.backend = JunebugBackend()
+        self.backend.push_outgoing(self.unicef, [outgoing])
+        self.assertEqual(len(responses.calls), 3)
+
+    @responses.activate
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://default.example.org:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        })
+    def test_outgoing_missing_no_affinity(self):
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+        # NOTE: We're sending an outgoing message without specifying the reply_to and so have no
+        #       means of maintaining affinity
+        outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=None)
+
+        # NOTE: There is no message for affinity, it should fallback to the default channel_id
+        self.assertJunebugMessageSent(
+            "http://default.example.org:8080/channels/replace-me/messages/",
+            to_addr='+1234', from_addr='+4321', content="That's great")
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
+            content_type="application/json", json={
+                'count': 1,
+                'next': None,
+                'previous': None,
+                'results': [
+                    {
+                        'address': "+1234",
+                    }
+                ]
+            })
+
+        responses.add(
+            responses.GET, "http://localhost:8081/api/v1/identities/%s/" % bob.uuid,
+            content_type="application/json", json={
+                'id': bob.uuid,
+                'version': 1,
+                'details': {
+                },
+                'communicate_through': None,
+                'operator': None,
+                'created_at': "2016-06-23T13:03:18.674016Z",
+                'created_by': 1,
+                'updated_at': "2016-06-23T13:03:18.674043Z",
+                'updated_by': 1
+            })
+
+        self.backend = JunebugBackend()
+        self.backend.push_outgoing(self.unicef, [outgoing])
+        self.assertEqual(len(responses.calls), 3)
+
     @mock.patch('casepro.backend.junebug.random')
     @responses.activate
     def test_inbound_message_id_unavoidable_collision(self, random_mock):
