@@ -379,7 +379,7 @@ class JunebugBackend(BaseBackend):
             message_sender = self.message_senders[channel_id]
         else:
             if channel_id:
-                logger.warning('Using default chanenl as channel %s is not configured.' % (channel_id,))
+                logger.warning('Using default channel as channel_id %s is not configured.' % (channel_id,))
             message_sender = self.message_senders[settings.JUNEBUG_DEFAULT_CHANNEL_ID]
         return message_sender.send_message(outgoing)
 
