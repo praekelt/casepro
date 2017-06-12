@@ -37,6 +37,16 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
 # junebug configuration
 def parse_channel_info(data):
+    """
+    Expected format: `<channel_id>,<from_addr>,<api_root>;<channel_id>,<from_addr>,<api_root>;`
+
+    Returns a tuple.
+    The first item is the assumed default junebug channel which can be used as a
+    default fallback for JUNEBUG_DEFAULT_CHANNEL_ID.
+    The second item is the dictionary that can be passed to JUNEBUG_CHANNELS
+
+    :returns: tuple
+    """
     channels = {}
     default_channel_id = None
     for channel in data.strip().split(';'):
