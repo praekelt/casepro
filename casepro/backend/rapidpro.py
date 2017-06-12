@@ -10,7 +10,7 @@ from casepro.contacts.models import Contact, Group, Field
 from casepro.msgs.models import Label, Message, Outgoing
 from casepro.utils.email import send_raw_email
 
-from . import BaseBackend
+from . import BaseBackend, BaseBackendException
 
 
 # no concept of flagging in RapidPro so that is modelled with a label
@@ -193,6 +193,10 @@ class MessageSyncer(BaseSyncer):
         local.release()
 
 
+class RapidProBackendException(BaseBackendException):
+    pass
+
+
 class RapidProBackend(BaseBackend):
     """
     RapidPro instance as a backend
@@ -366,3 +370,7 @@ class RapidProBackend(BaseBackend):
         No urls to register as everything is pulled from RapidPro
         """
         return []
+
+    @classmethod
+    def validate_settings(cls):
+        return

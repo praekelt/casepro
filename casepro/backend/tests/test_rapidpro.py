@@ -900,6 +900,9 @@ class RapidProBackendTest(BaseCasesTest):
         """
         self.assertEqual(self.backend.get_url_patterns(), [])
 
+    def test_validate_settings(self):
+        self.assertEqual(None, RapidProBackend.validate_settings())
+
 
 @skip
 class PerfTest(BaseCasesTest):

@@ -8,14 +8,22 @@ from pydoc import locate
 _ACTIVE_BACKEND = None
 
 
+def get_backend_class():
+    return locate(settings.SITE_BACKEND)
+
+
 def get_backend():
     """
     Gets the active backend for this casepro instance
     """
     global _ACTIVE_BACKEND
     if not _ACTIVE_BACKEND:
-        _ACTIVE_BACKEND = locate(settings.SITE_BACKEND)()
+        _ACTIVE_BACKEND = get_backend_class()()
     return _ACTIVE_BACKEND
+
+
+class BaseBackendException(Exception):
+    pass
 
 
 class BaseBackend(object):
@@ -215,6 +223,18 @@ class BaseBackend(object):
         :return: a list of URL patterns.
         """
 
+    @abstractmethod
+    def validate_settings(cls):
+        """
+        Raises a BaseBackendException if there are any problems with the settings
+        provided for the selected backend.
+
+        This is a class method because the settings are configured in Django's
+        settings and validation may need to happen before initialising the backend.
+
+        :return: None
+        """
+
 
 class NoopBackend(BaseBackend):  # pragma: no cover
     """
@@ -242,6 +262,10 @@ class NoopBackend(BaseBackend):  # pragma: no cover
 
     def get_url_patterns(self):
         return []
+
+    @classmethod
+    def validate_settings(cls):
+        return
 
 
 NoopBackend.__abstractmethods__ = set()
