@@ -61,7 +61,8 @@ def parse_channel_info(data):
 
 
 if 'JUNEBUG_CHANNELS' in os.environ:
-    inferred_default_channel, channel_info = parse_channel_info('JUNEBUG_CHANNELS', '')
+    inferred_default_channel, channel_info = parse_channel_info(
+        os.environ.get('JUNEBUG_CHANNELS'))
     JUNEBUG_DEFAULT_CHANNEL_ID = os.environ.get(
         'JUNEBUG_DEFAULT_CHANNEL_ID', inferred_default_channel)
     JUNEBUG_CHANNELS = channel_info
