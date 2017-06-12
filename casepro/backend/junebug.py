@@ -15,7 +15,7 @@ import pytz
 import six
 import logging
 
-from . import BaseBackend
+from . import BaseBackend, BaseBackendException
 from ..contacts.models import Contact, URN
 from ..msgs.models import Message
 from ..utils import uuid_to_int, json_decode
@@ -269,6 +269,10 @@ class JunebugMessageSender(object):
             self.hub_message_sender.send_helpdesk_outgoing_message(message, to_addr)
 
 
+class JunebugBackendException(BaseBackendException):
+    pass
+
+
 class JunebugBackend(BaseBackend):
     """
     Junebug instance as a backend.
@@ -284,6 +288,14 @@ class JunebugBackend(BaseBackend):
                 channel_info['FROM_ADDRESS'],
                 self.identity_store))
             for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
+
+    @classmethod
+    def validate_settings(cls):
+        for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
+            if not set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDR']):
+                raise JunebugBackendException(
+                    'Bad Junebug Channel config, keys '
+                    'API_ROOT and FROM_ADDR are required.')
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """

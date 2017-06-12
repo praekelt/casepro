@@ -20,7 +20,7 @@ from casepro.utils import json_decode, uuid_to_int
 
 from ..junebug import (
     IdentityStore, JunebugBackend, JunebugMessageSendingError, IdentityStoreContactSyncer, IdentityStoreContact,
-    received_junebug_message, token_auth_required, receive_identity_store_optout)
+    received_junebug_message, token_auth_required, receive_identity_store_optout, JunebugBackendException)
 
 
 @tag('junebug')
@@ -1103,6 +1103,35 @@ class JunebugInboundViewTest(BaseCasesTest):
         responses.add_callback(
             responses.POST, url, callback=junebug_callback,
             content_type="application/json")
+
+    @override_settings(
+        SITE_BACKEND='casepro.backend.junebug.JunebugBackend',
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        })
+    def test_validate_good_settings(self):
+        from casepro import backend
+        backend_class = backend.get_backend_class()
+        self.assertEqual(None, backend_class.validate_settings())
+
+    @override_settings(
+        SITE_BACKEND='casepro.backend.junebug.JunebugBackend',
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'GUILTY FEET': 'have got no rhythm',
+                'MANY': 'more bars',
+            }
+        })
+    def test_validate_bad_settings(self):
+        from casepro import backend
+        backend_class = backend.get_backend_class()
+        with self.assertRaises(JunebugBackendException):
+            backend_class.validate_settings()
 
     @responses.activate
     @override_settings(
