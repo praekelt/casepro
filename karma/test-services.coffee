@@ -1028,6 +1028,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
           })
@@ -1068,6 +1069,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
           })
@@ -1092,6 +1094,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
           })
@@ -1119,6 +1122,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
           })
@@ -1147,6 +1151,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
           })
@@ -1174,6 +1179,7 @@ describe('services:', () ->
 
           $httpBackend.expectGET('/partner/?with_activity=false')
             .respond([])
+
           ModalService.createCase({
             title: 'Foo',
             maxLength: 3,

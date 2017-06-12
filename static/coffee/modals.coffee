@@ -116,6 +116,7 @@ modals.controller('ReplyModalController', ['$scope', 'FaqService', '$uibModalIns
 #=====================================================================
 # Open new case modal
 #=====================================================================
+
 modals.controller 'NewCaseModalController', ['$scope', '$uibModalInstance', 'summaryInitial', 'summaryMaxLength', 'partners', 'UserService', ($scope, $uibModalInstance, summaryInitial, summaryMaxLength, partners, UserService) ->
   $scope.partners = partners
   $scope.users = [ANYONE]

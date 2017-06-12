@@ -35,6 +35,7 @@ services.factory('ContactService', ['$http', ($http) ->
 #=====================================================================
 # Incoming message service
 #=====================================================================
+
 services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer', ($rootScope, $http, $httpParamSerializer) ->
   new class MessageService
 
@@ -48,6 +49,7 @@ services.factory('MessageService', ['$rootScope', '$http', '$httpParamSerializer
       if search.last_refresh
         params.after = utils.formatIso8601(search.last_refresh)
       params.page = page
+
       return $http.get('/message/search/?' + $httpParamSerializer(params)).then((response) ->
         utils.parseDates(response.data.results, 'time')
         return {results: response.data.results, hasMore: response.data.has_more}
@@ -306,6 +308,7 @@ services.factory('OutgoingService', ['$rootScope', '$http', '$httpParamSerialize
 #=====================================================================
 # Case service
 #=====================================================================
+
 services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($http, $httpParamSerializer, $window) ->
   new class CaseService
 
@@ -462,6 +465,7 @@ services.factory('CaseService', ['$http', '$httpParamSerializer', '$window', ($h
 #=====================================================================
 # Label service
 #=====================================================================
+
 services.factory('LabelService', ['$http', '$httpParamSerializer', ($http, $httpParamSerializer) ->
   new class LabelService
 
@@ -843,3 +847,4 @@ services.factory('MessageBoardService', ['$http', '$httpParamSerializer', '$wind
       return $http.post('/messageboardcomment/unpin/' + comment.id + '/')
 
 ])
+

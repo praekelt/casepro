@@ -574,6 +574,7 @@ describe('controllers:', () ->
         redirect = spyOnPromise($q, $scope, UtilsService, 'navigate')
 
         $scope.onCaseWithoutMessage()
+
         expect(ModalService.createCase).toHaveBeenCalledWith({title: 'Open Case'})
 
         createCaseModal.resolve({text: 'test summary', partner: 2, user: 3, urn: 'tel:123'})
