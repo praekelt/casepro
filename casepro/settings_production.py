@@ -34,11 +34,27 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 25))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
-# junebug configuration
-JUNEBUG_API_ROOT = os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/')
-JUNEBUG_CHANNEL_ID = os.environ.get('JUNEBUG_CHANNEL_ID', 'replace-me')
-JUNEBUG_FROM_ADDRESS = os.environ.get('JUNEBUG_FROM_ADDRESS', None)
 
+# junebug configuration
+def parse_channel_info(data):
+    channels = {}
+    default_channel_id = None
+    for channel in data.strip().split(';'):
+        channel_id, from_addr, api_root = channel.split(',')
+        if not default_channel_id:
+            default_channel_id = channel_id.strip()
+        channels[channel_id.strip()] = {
+            'FROM_ADDR': from_addr.strip(),
+            'API_ROOT': api_root.strip(),
+        }
+    return default_channel_id, channels
+
+
+inferred_default_channel, channel_info = parse_channel_info('JUNEBUG_CHANNELS', '')
+JUNEBUG_DEFAULT_CHANNEL_ID = os.environ.get(
+    'JUNEBUG_DEFAULT_CHANNEL_ID', inferred_default_channel)
+JUNEBUG_CHANNELS = channel_info
+JUNEBUG_INBOUND_URL = r'^junebug/inbound$'
 JUNEBUG_HUB_BASE_URL = os.environ.get('JUNEBUG_HUB_BASE_URL', None)
 JUNEBUG_HUB_AUTH_TOKEN = os.environ.get('JUNEBUG_HUB_AUTH_TOKEN', None)
 
