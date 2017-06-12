@@ -292,10 +292,10 @@ class JunebugBackend(BaseBackend):
     @classmethod
     def validate_settings(cls):
         for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
-            if not set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDR']):
+            if set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDRESS']):
                 raise JunebugBackendException(
                     'Bad Junebug Channel config, keys '
-                    'API_ROOT and FROM_ADDR are required.')
+                    'API_ROOT and FROM_ADDRESS are required.')
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """
