@@ -13,8 +13,9 @@ import random
 import requests
 import pytz
 import six
+import logging
 
-from . import BaseBackend
+from . import BaseBackend, BaseBackendException
 from ..contacts.models import Contact, URN
 from ..msgs.models import Message
 from ..utils import uuid_to_int, json_decode
@@ -23,6 +24,9 @@ from dash.utils import is_dict_equal
 from dash.utils.sync import BaseSyncer, sync_local_to_changes
 
 from itertools import chain
+
+
+logger = logging.getLogger(__name__)
 
 
 class HubMessageSender(object):
@@ -161,7 +165,6 @@ class IdentityStoreContact(object):
         remote_language = json_data.get('details').get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition('_')
-            self.language = self.language[:3]
         self.name = json_data.get('details').get('name', None)
         self.fields = {}
         self.groups = {}
@@ -266,6 +269,10 @@ class JunebugMessageSender(object):
             self.hub_message_sender.send_helpdesk_outgoing_message(message, to_addr)
 
 
+class JunebugBackendException(BaseBackendException):
+    pass
+
+
 class JunebugBackend(BaseBackend):
     """
     Junebug instance as a backend.
@@ -274,8 +281,21 @@ class JunebugBackend(BaseBackend):
     def __init__(self):
         self.identity_store = IdentityStore(
             settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
-        self.message_sender = JunebugMessageSender(
-            settings.JUNEBUG_API_ROOT, settings.JUNEBUG_CHANNEL_ID, settings.JUNEBUG_FROM_ADDRESS, self.identity_store)
+        self.message_senders = dict([
+            (channel_id, JunebugMessageSender(
+                channel_info['API_ROOT'],
+                channel_id,
+                channel_info['FROM_ADDRESS'],
+                self.identity_store))
+            for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
+
+    @classmethod
+    def validate_settings(cls):
+        for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
+            if set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDRESS']):
+                raise JunebugBackendException(
+                    'Bad Junebug Channel config, keys '
+                    'API_ROOT and FROM_ADDRESS are required.')
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """
@@ -358,7 +378,22 @@ class JunebugBackend(BaseBackend):
         :param as_broadcast: whether outgoing messages differ only by recipient and so can be sent as single broadcast
         """
         for message in outgoing:
-            self.message_sender.send_message(message)
+            self.send_message(message)
+
+    def send_message(self, outgoing):
+        message = outgoing.reply_to
+        if message:
+            channel_id = message.metadata.get('channel_id')
+        else:
+            channel_id = settings.JUNEBUG_DEFAULT_CHANNEL_ID
+
+        if channel_id in self.message_senders:
+            message_sender = self.message_senders[channel_id]
+        else:
+            if channel_id:
+                logger.warning('Using default channel as channel_id %s is not configured.' % (channel_id,))
+            message_sender = self.message_senders[settings.JUNEBUG_DEFAULT_CHANNEL_ID]
+        return message_sender.send_message(outgoing)
 
     @staticmethod
     def _identity_equal(identity, contact):
@@ -557,6 +592,11 @@ def received_junebug_message(request):
     contact = Contact.get_or_create(request.org, identity.get('id'))
 
     message_id = uuid_to_int(data.get('message_id'))
+    metadata = {
+        'backend': 'casepro.backend.junebug.JunebugBackend',
+        'channel_id': data['channel_id'],
+        'message_id': data['message_id'],
+    }
 
     if 'timestamp' in data:
         timestamp = dateutil.parser.parse(data['timestamp'])
@@ -571,7 +611,8 @@ def received_junebug_message(request):
         with transaction.atomic():
             msg = Message.objects.create(
                 org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                text=(data.get('content') or ''), created_on=timestamp, has_labels=True)
+                text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
+                metadata=metadata)
     except IntegrityError as e:
         # If there's a clash, try to generate a random one that doesn't result in a clash
         msg = None
@@ -581,7 +622,8 @@ def received_junebug_message(request):
                 with transaction.atomic():
                     msg = Message.objects.create(
                         org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                        text=(data.get('content') or ''), created_on=timestamp, has_labels=True)
+                        text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
+                        metadata=metadata)
                 break
             except IntegrityError:
                 pass
@@ -626,8 +668,15 @@ def receive_identity_store_optout(request):
             return JsonResponse({'reason': "No Contact for id: " + identity_id}, status=400)
 
         if optout_type == "forget":
-            # TODO: Removed any identifying details from the contact
-            # (to uphold 'Right to be forgotten')
+            local_contact.urns = []
+            local_contact.save()
+
+            local_contact.incoming_messages.update(text='<redacted>')
+            local_contact.outgoing_messages.update(text='<redacted>', urn='<redacted>')
+
+            for incoming in local_contact.incoming_messages.all().iterator():
+                incoming.replies.update(text='<redacted>', urn='<redacted>')
+
             local_contact.release()
             return JsonResponse({'success': True}, status=200)
 

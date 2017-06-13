@@ -34,11 +34,49 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 25))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
-# junebug configuration
-JUNEBUG_API_ROOT = os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/')
-JUNEBUG_CHANNEL_ID = os.environ.get('JUNEBUG_CHANNEL_ID', 'replace-me')
-JUNEBUG_FROM_ADDRESS = os.environ.get('JUNEBUG_FROM_ADDRESS', None)
 
+# junebug configuration
+def parse_channel_info(data):
+    """
+    Expected format: `<channel_id>,<from_addr>,<api_root>;<channel_id>,<from_addr>,<api_root>;`
+
+    Returns a tuple.
+    The first item is the assumed default junebug channel which can be used as a
+    default fallback for JUNEBUG_DEFAULT_CHANNEL_ID.
+    The second item is the dictionary that can be passed to JUNEBUG_CHANNELS
+
+    :returns: tuple
+    """
+    channels = {}
+    default_channel_id = None
+    for channel in data.strip().split(';'):
+        channel_id, from_addr, api_root = channel.split(',')
+        if not default_channel_id:
+            default_channel_id = channel_id.strip()
+        channels[channel_id.strip()] = {
+            'FROM_ADDRESS': from_addr.strip(),
+            'API_ROOT': api_root.strip(),
+        }
+    return default_channel_id, channels
+
+
+if 'JUNEBUG_CHANNELS' in os.environ:
+    inferred_default_channel, channel_info = parse_channel_info(
+        os.environ.get('JUNEBUG_CHANNELS'))
+    JUNEBUG_DEFAULT_CHANNEL_ID = os.environ.get(
+        'JUNEBUG_DEFAULT_CHANNEL_ID', inferred_default_channel)
+    JUNEBUG_CHANNELS = channel_info
+else:
+    # NOTE: allows graceful fallback to previous configuration style, pre reply-affinity
+    JUNEBUG_DEFAULT_CHANNEL_ID = os.environ.get('JUNEBUG_CHANNEL_ID', 'replace-me')
+    JUNEBUG_CHANNELS = {
+        JUNEBUG_DEFAULT_CHANNEL_ID: {
+            'FROM_ADDRESS': os.environ.get('JUNEBUG_FROM_ADDRESS', None),
+            'API_ROOT': os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/'),
+        }
+    }
+
+JUNEBUG_INBOUND_URL = r'^junebug/inbound$'
 JUNEBUG_HUB_BASE_URL = os.environ.get('JUNEBUG_HUB_BASE_URL', None)
 JUNEBUG_HUB_AUTH_TOKEN = os.environ.get('JUNEBUG_HUB_AUTH_TOKEN', None)
 

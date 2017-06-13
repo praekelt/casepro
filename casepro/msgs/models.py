@@ -5,6 +5,7 @@ import six
 from dash.orgs.models import Org
 from dash.utils import get_obj_cacheable
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import HStoreField
 from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
@@ -301,6 +302,8 @@ class Message(models.Model):
     org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='incoming_messages')
 
     backend_id = models.IntegerField(unique=True, help_text=_("Backend identifier for this message"))
+
+    metadata = HStoreField(blank=True, null=True, default={}, help_text=_('Metadata for the received message.'))
 
     contact = models.ForeignKey(Contact, related_name='incoming_messages')
 

@@ -1,4 +1,7 @@
-directives = angular.module('cases.directives', []);
+#============================================================================
+# Directives
+#============================================================================
+directives = angular.module('cases.directives', [])
 
 
 #----------------------------------------------------------------------------
@@ -22,10 +25,10 @@ directives.directive('cpContact', () ->
             $scope.contact = contact
             $scope.fetched = true
           )
-      
+
       $scope.closePopover = () ->
         $scope.popoverIsOpen = false
-    ]      
+    ]
   }
 )
 
