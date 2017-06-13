@@ -594,8 +594,8 @@ def received_junebug_message(request):
     message_id = uuid_to_int(data.get('message_id'))
     metadata = {
         'backend': 'casepro.backend.junebug.JunebugBackend',
-        'channel_id': data['channel_id'],
-        'message_id': data['message_id'],
+        'channel_id': data.get('channel_id'),
+        'message_id': data.get('message_id'),
     }
 
     if 'timestamp' in data:
