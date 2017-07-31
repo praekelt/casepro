@@ -250,6 +250,12 @@ class JunebugMessageSender(object):
         return type_, address
 
     def send_message(self, message):
+        original_inbound = message.reply_to
+        if original_inbound:
+            inbound_message_id = original_inbound.metadata.get('message_id')
+        else:
+            inbound_message_id = None
+
         if message.urn:
             _, to_addr = self.split_urn(message.urn)
             addresses = [to_addr]
@@ -259,12 +265,17 @@ class JunebugMessageSender(object):
         else:
             # If we don't have an URN for a message, we cannot send it.
             raise JunebugMessageSendingError("Cannot send message without URN: %r" % message)
+
+        defaults = {
+            'from': self.from_address,
+            'content': message.text,
+        }
+        if inbound_message_id is not None:
+            defaults['reply_to'] = inbound_message_id
+
         for to_addr in addresses:
-            data = {
-                'to': to_addr,
-                'from': self.from_address,
-                'content': message.text,
-            }
+            data = defaults.copy()
+            data['to'] = to_addr
             self.session.post(self.url, json=data)
             self.hub_message_sender.send_helpdesk_outgoing_message(message, to_addr)
 

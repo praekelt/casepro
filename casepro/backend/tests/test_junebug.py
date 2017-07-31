@@ -1085,10 +1085,18 @@ class JunebugInboundViewTest(BaseCasesTest):
             'backend': 'casepro.backend.junebug.JunebugBackend',
         })
 
-    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234'):
+    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234', reply_to=None):
         def junebug_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': to_addr, 'from': from_addr, 'content': content})
+            expected_data = {
+                'to': to_addr,
+                'from': from_addr,
+                'content': content,
+            }
+            if reply_to is not None:
+                expected_data['reply_to'] = reply_to
+
+            self.assertEqual(data, expected_data)
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
@@ -1150,12 +1158,13 @@ class JunebugInboundViewTest(BaseCasesTest):
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         message = self.create_message(self.unicef, 1000, bob, 'Is this great?', metadata={
             'channel_id': 'junebug-channel-id',
+            'message_id': 'junebug-message-id',
         })
         outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=message)
 
         self.assertJunebugMessageSent(
             "http://good.example.org:8080/channels/junebug-channel-id/messages/",
-            to_addr='+1234', from_addr='+6789', content="That's great")
+            to_addr='+1234', from_addr='+6789', content="That's great", reply_to='junebug-message-id')
 
         responses.add(
             responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),

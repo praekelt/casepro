@@ -151,8 +151,7 @@ if SENTRY_DSN:
 PODS = [{
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
-    'url': os.environ.get('REGISTRATION_URL',
-                          'http://registration.familyconnect.seed.p16n.org/api/v1/registrations/'),
+    'url': os.environ.get('REGISTRATION_URL', ''),
     'token': os.environ.get('REGISTRATION_AUTH_TOKEN',
                             'replace-with-auth-token'),
     'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
@@ -171,8 +170,7 @@ PODS = [{
 }, {
     'label': "family_connect_subscription_pod",
     'title': "Subscription Information",
-    'url': os.environ.get('SUBSCRIPTION_URL',
-                          "http://stage-based-messaging.familyconnect.seed.p16n.org/api/v1/"),
+    'url': os.environ.get('SUBSCRIPTION_URL', ''),
     'token': os.environ.get('SUBSCRIPTION_AUTH_TOKEN',
                             'replace-with-auth-token'),
 }]
