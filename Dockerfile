@@ -1,5 +1,5 @@
 FROM praekeltfoundation/django-bootstrap
-RUN apt-get-install.sh nodejs npm \
+RUN apt-get-install.sh git nodejs npm \
     redis-server supervisor gcc && \
     ln -s /usr/bin/nodejs /usr/bin/node
 
