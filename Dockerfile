@@ -22,6 +22,7 @@ EXPOSE 8000
 
 CMD ["docker-start.sh"]
 
+COPY . /app
 RUN pip install -r pip-freeze.txt && \
     npm install -g less coffee-script && \
     django-admin collectstatic --noinput &&\
