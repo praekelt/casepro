@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from datetime import datetime
 import dateutil.parser
+from urlparse import urlparse, urlunparse
 from django.conf import settings
 from django.conf.urls import url
 from django.db import IntegrityError, transaction
@@ -235,6 +236,19 @@ class JunebugMessageSender(object):
         self.from_address = from_address
         self.identity_store = identity_store
         self.session = requests.Session()
+
+        parts = urlparse(base_url)
+        if any([parts.username, parts.password]):
+            self.session.auth = (parts.username, parts.password)
+            # Reconstruct URL without Auth in the URL
+            self.base_url = urlunparse((
+                parts.scheme,
+                '%s%s' % (parts.hostname, '' if parts.port is None else ':%s' % (parts.port,)),
+                parts.path,
+                parts.params,
+                parts.query,
+                parts.fragment))
+
         self.hub_message_sender = HubMessageSender(
             settings.JUNEBUG_HUB_BASE_URL, settings.JUNEBUG_HUB_AUTH_TOKEN)
 
