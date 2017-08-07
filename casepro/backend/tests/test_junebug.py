@@ -1218,7 +1218,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         def request_callback(request):
             strategy, _, auth = request.headers['Authorization'].partition(' ')
             self.assertEqual(strategy, 'Basic')
-            self.assertEqual(b64decode(auth), 'username:password')
+            self.assertEqual(b64decode(auth), b'username:password')
             return (201, {}, json.dumps({}))
         responses.add_callback(
             responses.POST, "http://auth.example.org:8080/channels/replace-me/messages/", callback=request_callback,
