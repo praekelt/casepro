@@ -18,7 +18,7 @@ class Command(BaseCommand):
         except Org.DoesNotExist:
             raise CommandError("No such org with id %d" % org_id)
 
-        for message in org.outgoing_messages.filter(reply_to__isnull=False):
+        for message in org.outgoing_messages.select_related('reply_to').filter(reply_to__isnull=False):
             self.stdout.write(json.dumps({
                 'outbound_reply': message.text,
                 'inbound_message': message.reply_to.text,
