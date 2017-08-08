@@ -4,6 +4,7 @@ import json
 import responses
 import uuid
 import mock
+from base64 import b64decode
 
 import pytz
 from datetime import datetime
@@ -1085,10 +1086,18 @@ class JunebugInboundViewTest(BaseCasesTest):
             'backend': 'casepro.backend.junebug.JunebugBackend',
         })
 
-    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234'):
+    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234', reply_to=None):
         def junebug_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': to_addr, 'from': from_addr, 'content': content})
+            expected_data = {
+                'to': to_addr,
+                'from': from_addr,
+                'content': content,
+            }
+            if reply_to is not None:
+                expected_data['reply_to'] = reply_to
+
+            self.assertEqual(data, expected_data)
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
@@ -1150,12 +1159,13 @@ class JunebugInboundViewTest(BaseCasesTest):
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         message = self.create_message(self.unicef, 1000, bob, 'Is this great?', metadata={
             'channel_id': 'junebug-channel-id',
+            'message_id': 'junebug-message-id',
         })
         outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=message)
 
         self.assertJunebugMessageSent(
             "http://good.example.org:8080/channels/junebug-channel-id/messages/",
-            to_addr='+1234', from_addr='+6789', content="That's great")
+            to_addr='+1234', from_addr='+6789', content="That's great", reply_to='junebug-message-id')
 
         responses.add(
             responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
@@ -1188,6 +1198,35 @@ class JunebugInboundViewTest(BaseCasesTest):
         self.backend = JunebugBackend()
         self.backend.push_outgoing(self.unicef, [outgoing])
         self.assertEqual(len(responses.calls), 3)
+
+    @responses.activate
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://username:password@auth.example.org:8080/',
+                'FROM_ADDRESS': '+4321',
+            },
+        })
+    def test_http_basic_auth(self):
+        """
+        Sending outgoing messages with a specified urn should send via Junebug with that URN.
+        """
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+        msg = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234")
+
+        def request_callback(request):
+            strategy, _, auth = request.headers['Authorization'].partition(' ')
+            self.assertEqual(strategy, 'Basic')
+            self.assertEqual(b64decode(auth), b'username:password')
+            return (201, {}, json.dumps({}))
+        responses.add_callback(
+            responses.POST, "http://auth.example.org:8080/channels/replace-me/messages/", callback=request_callback,
+            content_type="application/json")
+
+        backend = JunebugBackend()
+        backend.push_outgoing(self.unicef, [msg])
+        self.assertEqual(len(responses.calls), 1)
 
     @responses.activate
     @override_settings(
