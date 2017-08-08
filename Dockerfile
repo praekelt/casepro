@@ -23,7 +23,6 @@ EXPOSE 8000
 CMD ["docker-start.sh"]
 
 RUN pip install -r pip-freeze.txt && \
-    pip install -r pip-freeze-praekelt.txt && \
     npm install -g less coffee-script && \
     django-admin collectstatic --noinput &&\
     USE_DEFAULT_CACHE=True django-admin compress
