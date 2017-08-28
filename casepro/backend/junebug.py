@@ -83,13 +83,16 @@ class IdentityStore(object):
         self.session.headers.update({'Authorization': "Token %s" % auth_token})
         self.session.headers.update({'Content-Type': "application/json"})
 
-    def get_paginated_response(self, url, params={}, **kwargs):
+    def get_paginated_response(self, url, params={}, pages=False, **kwargs):
         """Get the results of all pages of a response. Returns an iterator that returns each of the items."""
         while url is not None:
             r = self.session.get(url, params=params, **kwargs)
             data = r.json()
-            for result in data.get('results', []):
-                yield result
+            if pages:
+                yield data.get('results', [])
+            else:
+                for result in data.get('results', []):
+                    yield result
             url = data.get('next', None)
             # params are included in the next url
             params = {}
@@ -142,14 +145,18 @@ class IdentityStore(object):
         return identity.json()
 
     def get_identities(self, **params):
-        """Get the list of identities filtered by the given kwargs."""
+        """
+        Get the list of identities filtered by the given kwargs. Returns an iterator that yields an array of
+        identities per iteration.
+        """
         url = '%s/api/v1/identities/?' % self.base_url
 
-        identities = self.get_paginated_response(url, params=params)
+        identities = self.get_paginated_response(url, pages=True, params=params)
 
         # Users who opt to be forgotten from the system have their details
         # stored as 'redacted'.
-        return (IdentityStoreContact(i) for i in identities if i.get('details').get('name') != "redacted")
+        for page in identities:
+            yield [IdentityStoreContact(i) for i in page if i.get('details').get('name') != "redacted"]
 
 
 class IdentityStoreContact(object):
@@ -340,11 +347,11 @@ class JunebugBackend(BaseBackend):
         # all identities modified in the Identity Store in the time window
         modified_identities = identity_store.get_identities(updated_from=modified_after, updated_to=modified_before)
 
-        identities_to_update = list(chain(modified_identities, new_identities))
+        identities_to_update = chain(modified_identities, new_identities)
 
         # sync_local_to_changes() expects iterables for the 3rd and 4th args
         # Deleted identities are updated via the Identity Store callback
-        return sync_local_to_changes(org, IdentityStoreContactSyncer(), [identities_to_update], [], progress_callback)
+        return sync_local_to_changes(org, IdentityStoreContactSyncer(), identities_to_update, [], progress_callback)
 
     def pull_fields(self, org):
         """
