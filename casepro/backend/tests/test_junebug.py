@@ -159,7 +159,6 @@ class JunebugBackendTest(BaseCasesTest):
                     'id': "test_id",
                     'version': 1,
                     'details': {
-                        'name': "redacted",
                         'addresses': {},
                         'language': "redacted",
                     },
