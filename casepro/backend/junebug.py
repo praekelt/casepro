@@ -175,6 +175,7 @@ class IdentityStoreContact(object):
         remote_language = json_data.get('details').get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition('_')
+            self.language = self.language[:3]
         self.name = json_data.get('details').get('name', None)
         self.fields = {}
         self.groups = {}
