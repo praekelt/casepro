@@ -159,9 +159,33 @@ class JunebugBackendTest(BaseCasesTest):
                     'id': "test_id",
                     'version': 1,
                     'details': {
-                        'name': "redacted",
                         'addresses': {},
                         'language': "redacted",
+                    },
+                    'communicate_through': None,
+                    'operator': None,
+                    'created_at': "2016-02-14T10:21:00.258406Z",
+                    'created_by': 1,
+                    'updated_at': "2016-03-14T10:21:00.258406Z",
+                    'updated_by': 1
+                }
+            ]
+        }
+        return (201, headers, json.dumps(resp))
+
+    def identity_store_long_language_callback(self, request):
+        headers = {'Content-Type': "application/json"}
+        resp = {
+            'count': 1,
+            'next': None,
+            'previous': None,
+            'results': [
+                {
+                    'id': "test_id",
+                    'version': 1,
+                    'details': {
+                        'addresses': {},
+                        'language': "english_ZA",
                     },
                     'communicate_through': None,
                     'operator': None,
@@ -270,6 +294,30 @@ class JunebugBackendTest(BaseCasesTest):
         [contact] = Contact.objects.all()
         self.assertEqual(contact.uuid, "test_id")
         self.assertEqual(contact.name, "test")
+
+    @responses.activate
+    def test_pull_contacts_long_language_code(self):
+        """
+        If a contact is pulled that has a language code longer than 3 characters, it should be truncated.
+        """
+        self.add_identity_store_callback(
+            "created_to=2016-03-14T10%3A21%3A00&created_from=2016-03-14T10%3A25%3A00",
+            self.identity_store_long_language_callback
+        )
+        self.add_identity_store_callback(
+            "updated_to=2016-03-14T10%3A21%3A00&updated_from=2016-03-14T10%3A25%3A00",
+            self.identity_store_no_matches_callback
+        )
+
+        (created, updated, deleted, ignored) = self.backend.pull_contacts(
+            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00")
+        self.assertEqual(created, 1)
+        self.assertEqual(updated, 0)
+        self.assertEqual(deleted, 0)
+        self.assertEqual(ignored, 0)
+        self.assertEqual(Contact.objects.count(), 1)
+        [contact] = Contact.objects.all()
+        self.assertEqual(contact.language, 'eng')
 
     def test_pull_fields(self):
         """

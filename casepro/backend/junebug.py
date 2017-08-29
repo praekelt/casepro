@@ -154,9 +154,11 @@ class IdentityStore(object):
         identities = self.get_paginated_response(url, pages=True, params=params)
 
         # Users who opt to be forgotten from the system have their details
-        # stored as 'redacted'.
+        # stored as 'redacted'. Language field is a good field to check, since
+        # every user that we send messages to has to have a language set.
+        language_field = getattr(settings, 'IDENTITY_LANGUAGE_FIELD', "language")
         for page in identities:
-            yield [IdentityStoreContact(i) for i in page if i.get('details').get('name') != "redacted"]
+            yield [IdentityStoreContact(i) for i in page if i.get('details').get(language_field) != "redacted"]
 
 
 class IdentityStoreContact(object):
@@ -173,6 +175,7 @@ class IdentityStoreContact(object):
         remote_language = json_data.get('details').get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition('_')
+            self.language = self.language[:3]
         self.name = json_data.get('details').get('name', None)
         self.fields = {}
         self.groups = {}
