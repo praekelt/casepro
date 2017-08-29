@@ -1760,7 +1760,7 @@ class IdentityStoreTest(BaseCasesTest):
             responses.GET, "http://identitystore.org/api/v1/identities/?details__name=test", match_querystring=True,
             callback=self.get_identities_callback, content_type="application/json")
 
-        [identity] = identity_store.get_identities(details__name="test")
+        [[identity]] = identity_store.get_identities(details__name="test")
         self.assertEqual(identity.name, "test")
 
     @responses.activate
