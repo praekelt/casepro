@@ -67,7 +67,7 @@ xlutils==2.0.0
 xlwt==1.1.2               # via rapidpro-dash, smartmin, xlutils
 zope.interface==4.3.3
 casepropods.family_connect_registration>=0.1.4
-casepropods.family_connect_subscription>=0.3.3
+casepropods.family_connect_subscription>=0.3.4
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools                # via zope.interface
