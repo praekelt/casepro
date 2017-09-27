@@ -3,7 +3,7 @@ celery-with-redis
 colorama
 -e git+https://github.com/nyaruka/confmodel.git@python3#egg=confmodel
 coverage
-django
+django >= 1.10, < 1.11
 # django-celery-email requires celery>=4.0, while celery-with-redis requires celery<4.0
 django-celery-email < 2.0.0
 django-compressor
