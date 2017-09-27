@@ -11,6 +11,7 @@ django-celery-email < 2.0.0
 django-compressor
 django-digest
 django-el-pagination
+django-guardian
 django-redis
 django-rosetta
 django-storages

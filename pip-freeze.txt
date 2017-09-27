@@ -29,6 +29,7 @@ django-compressor==2.2
 django-contrib-comments==1.8.0
 django-digest==1.13
 django-el-pagination==3.1.0
+django-guardian==1.4.9
 django-hamlpy==1.1.1      # via rapidpro-dash
 django-redis==4.8.0
 django-rosetta==0.7.13
@@ -70,7 +71,7 @@ requests==2.18.4          # via demands, django-rosetta, microsofttranslator, ra
 responses==0.8.0
 rjsmin==1.0.12            # via django-compressor
 seed-services-client==0.31.0  # via casepropods.family-connect-subscription
-six==1.11.0               # via demands, django-hamlpy, django-rosetta, microsofttranslator, mock, python-dateutil, rapidpro-dash, rapidpro-python, responses, smartmin
+six==1.11.0               # via demands, django-guardian, django-hamlpy, django-rosetta, microsofttranslator, mock, python-dateutil, rapidpro-dash, rapidpro-python, responses, smartmin
 smartmin==1.11.3
 sorl-thumbnail==12.3
 urllib3==1.22             # via requests
