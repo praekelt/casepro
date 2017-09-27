@@ -1,4 +1,6 @@
 boto
+casepropods.family_connect_registration >= 0.1.4
+casepropods.family_connect_subscription >= 0.3.4
 celery-with-redis
 colorama
 -e git+https://github.com/nyaruka/confmodel.git@python3#egg=confmodel

@@ -10,6 +10,8 @@ anyjson==0.3.3            # via kombu
 attrs==17.2.0             # via hypothesis
 billiard==3.3.0.23        # via celery
 boto==2.48.0
+casepropods.family-connect-registration==0.1.4
+casepropods.family-connect-subscription==0.3.4
 celery-with-redis==3.0
 celery==3.1.25            # via celery-with-redis, django-celery-email, rapidpro-dash, smartmin
 certifi==2017.7.27.1      # via requests
@@ -19,6 +21,7 @@ configparser==3.5.0       # via flake8
 contextlib2==0.5.5        # via raven
 cookies==2.2.1            # via responses
 coverage==4.4.1
+demands==3.0.0            # via seed-services-client
 dj-database-url==0.4.2
 django-appconf==1.0.2     # via django-celery-email, django-compressor
 django-celery-email==1.1.5
@@ -50,6 +53,7 @@ phonenumbers==8.8.2       # via rapidpro-dash
 pillow==4.2.1
 pisa==3.0.33
 polib==1.0.8              # via django-rosetta
+pretty-cron==1.0.2        # via casepropods.family-connect-subscription
 psycopg2==2.7.3.1
 pycodestyle==2.3.1        # via flake8
 pycountry==17.9.23
@@ -62,10 +66,11 @@ raven==6.2.1
 rcssmin==1.0.6            # via django-compressor
 redis==2.10.6             # via celery-with-redis, django-redis, rapidpro-dash, smartmin
 regex==2017.9.23
-requests==2.18.4          # via django-rosetta, microsofttranslator, rapidpro-dash, rapidpro-python, responses
+requests==2.18.4          # via demands, django-rosetta, microsofttranslator, rapidpro-dash, rapidpro-python, responses, seed-services-client
 responses==0.8.0
 rjsmin==1.0.12            # via django-compressor
-six==1.11.0               # via django-hamlpy, django-rosetta, microsofttranslator, mock, python-dateutil, rapidpro-dash, rapidpro-python, responses, smartmin
+seed-services-client==0.31.0  # via casepropods.family-connect-subscription
+six==1.11.0               # via demands, django-hamlpy, django-rosetta, microsofttranslator, mock, python-dateutil, rapidpro-dash, rapidpro-python, responses, smartmin
 smartmin==1.11.3
 sorl-thumbnail==12.3
 urllib3==1.22             # via requests
