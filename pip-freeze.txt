@@ -13,7 +13,7 @@ boto==2.48.0
 casepropods.family-connect-registration==0.1.4
 casepropods.family-connect-subscription==0.3.4
 celery-with-redis==3.0
-celery==3.1.25            # via celery-with-redis, django-celery-email, rapidpro-dash, smartmin
+celery==3.1.25            # via celery-with-redis, django-celery-email, smartmin
 certifi==2017.7.27.1      # via requests
 chardet==3.0.4            # via requests
 colorama==0.3.9
@@ -29,7 +29,7 @@ django-compressor==2.2
 django-contrib-comments==1.8.0
 django-digest==1.13
 django-el-pagination==3.1.0
-django-guardian==1.4.9    # via smartmin
+django-guardian==1.4.9    # via rapidpro-dash, smartmin
 django-hamlpy==1.1.1      # via rapidpro-dash
 django-redis==4.8.0
 django-rosetta==0.7.13
@@ -61,11 +61,11 @@ pycountry==17.9.23
 pyflakes==1.5.0           # via flake8
 python-dateutil==2.6.1
 pytz==2017.2              # via celery, django-timezone-field, rapidpro-python, smartmin
-rapidpro-dash==1.2.1
+rapidpro-dash==1.1.1
 rapidpro-python==2.1.8
 raven==6.2.1
 rcssmin==1.0.6            # via django-compressor
-redis==2.10.6             # via celery-with-redis, django-redis, rapidpro-dash, smartmin
+redis==2.10.6             # via celery-with-redis, django-redis, smartmin
 regex==2017.9.23
 requests==2.18.4          # via demands, django-rosetta, microsofttranslator, rapidpro-dash, rapidpro-python, responses, seed-services-client
 responses==0.8.0

@@ -27,7 +27,7 @@ pisa
 psycopg2
 pycountry
 python-dateutil
-rapidpro-dash
+rapidpro-dash >= 1.1, < 1.2
 rapidpro-python
 raven
 regex
