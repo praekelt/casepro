@@ -11,7 +11,6 @@ django-celery-email < 2.0.0
 django-compressor
 django-digest
 django-el-pagination
-django-guardian
 django-redis
 django-rosetta
 django-storages
@@ -33,6 +32,6 @@ rapidpro-python
 raven
 regex
 responses
-smartmin
+smartmin >= 1.10, < 1.11
 sorl-thumbnail
 xlutils
