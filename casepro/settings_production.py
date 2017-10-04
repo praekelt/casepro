@@ -151,9 +151,17 @@ if SENTRY_DSN:
 PODS = [{
     'label': "family_connect_registration_pod",
     'title': "Registration Information",
-    'url': os.environ.get('REGISTRATION_URL', ''),
-    'token': os.environ.get('REGISTRATION_AUTH_TOKEN',
-                            'replace-with-auth-token'),
+    'hub_api_url': os.environ.get('REGISTRATION_URL', ''),
+    'hub_token': os.environ.get('REGISTRATION_AUTH_TOKEN',
+                                'replace-with-auth-token'),
+    'identity_store_api_url': os.environ.get(
+        'IDENTITY_API_ROOT',
+        'https://identity-store/api/v1/',
+    ),
+    'identity_store_token': os.environ.get(
+        'IDENTITY_AUTH_TOKEN',
+        'identity-store-token',
+    ),
     'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
                                            'mother_id'),
     'field_mapping': [
