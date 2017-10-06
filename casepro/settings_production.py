@@ -154,9 +154,11 @@ PODS = [{
     'hub_api_url': os.environ.get('REGISTRATION_URL', ''),
     'hub_token': os.environ.get('REGISTRATION_AUTH_TOKEN',
                                 'replace-with-auth-token'),
-    'identity_store_api_url': os.environ.get(
-        'IDENTITY_API_ROOT',
-        'https://identity-store/api/v1/',
+    'identity_store_api_url': '{0}api/v1/'.format(
+        os.environ.get(
+            'IDENTITY_API_ROOT',
+            'https://identity-store/',
+        )
     ),
     'identity_store_token': os.environ.get(
         'IDENTITY_AUTH_TOKEN',
