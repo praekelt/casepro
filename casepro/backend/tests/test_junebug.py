@@ -626,7 +626,8 @@ class JunebugBackendTest(BaseCasesTest):
                 'content': "That's great", 'inbound_created_on': '2016-11-16T10:30:00+00:00',
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
                 'label': 'AIDS', 'reply_to': 'Hello', 'to': '+1234', 'user_id': 'C-002',
-                'helpdesk_operator_id': self.user1.id})
+                'helpdesk_operator_id': self.user1.id,
+                'inbound_channel_id': '66412231-4a4c-45d8-bbe1-95676ec3c5b7'})
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
@@ -646,7 +647,8 @@ class JunebugBackendTest(BaseCasesTest):
 
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         msg = self.create_message(
-            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc))
+            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc),
+            metadata={"channel_id": "66412231-4a4c-45d8-bbe1-95676ec3c5b7"})
         msg.labels.add(self.aids)
         self.backend = JunebugBackend()
         out_msg = self.create_outgoing(
@@ -687,7 +689,8 @@ class JunebugBackendTest(BaseCasesTest):
             self.assertEqual(data, {
                 'content': "That's great", 'inbound_created_on': '2016-11-17T10:30:00+00:00',
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
-                'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id})
+                'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id,
+                'inbound_channel_id': None})
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
