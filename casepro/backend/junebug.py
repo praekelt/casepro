@@ -46,10 +46,12 @@ class HubMessageSender(object):
             reply_to = ''
             label = ''
             inbound_created_on = outgoing.created_on
+            inbound_channel_id = None
         else:
             reply_to = outgoing.reply_to.text
             label = ','.join([str(l) for l in outgoing.reply_to.labels.all()])
             inbound_created_on = outgoing.reply_to.created_on
+            inbound_channel_id = outgoing.reply_to.metadata.get('channel_id', None)
 
         return {
             'to': to_addr,
@@ -59,7 +61,8 @@ class HubMessageSender(object):
             'helpdesk_operator_id': outgoing.created_by.id,
             'label': label,
             'inbound_created_on': inbound_created_on.isoformat(),
-            'outbound_created_on': outgoing.created_on.isoformat()}
+            'outbound_created_on': outgoing.created_on.isoformat(),
+            'inbound_channel_id': inbound_channel_id}
 
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):
         if self.base_url and self.auth_token:
