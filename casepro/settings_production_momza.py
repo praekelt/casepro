@@ -10,8 +10,6 @@ PODS[0]['contact_id_fieldname'] = os.environ.get(  # noqa: F405
 )
 
 PODS[0]['field_mapping'] = [  # noqa: F405
-    {"field": "msisdn_registrant", "field_name": "Cell Number"},
-    {"field": "language", "field_name": "Language Preference"},
     {"field": "faccode", "field_name": "Facility Code"},
     {"field": "reg_type", "field_name": "Registration Type"},
     {"field": "mom_dob", "field_name": "Mother's Date of Birth"},
