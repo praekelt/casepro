@@ -5,7 +5,7 @@ import os
 from settings_production import *  # noqa
 
 
-LOGGING['loggers']['casepro.backend.junebug'] = {
+LOGGING['loggers']['casepro.backend.junebug'] = {  # noqa: F405
     'handlers': ['console'],
     'level': 'INFO',
 }
