@@ -690,7 +690,7 @@ class JunebugBackendTest(BaseCasesTest):
                 'content': "That's great", 'inbound_created_on': '2016-11-17T10:30:00+00:00',
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
                 'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id,
-                'inbound_channel_id': None})
+                'inbound_channel_id': ''})
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 200,

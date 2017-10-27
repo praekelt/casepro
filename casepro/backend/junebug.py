@@ -46,12 +46,12 @@ class HubMessageSender(object):
             reply_to = ''
             label = ''
             inbound_created_on = outgoing.created_on
-            inbound_channel_id = None
+            inbound_channel_id = ""
         else:
             reply_to = outgoing.reply_to.text
             label = ','.join([str(l) for l in outgoing.reply_to.labels.all()])
             inbound_created_on = outgoing.reply_to.created_on
-            inbound_channel_id = outgoing.reply_to.metadata.get('channel_id', None)
+            inbound_channel_id = outgoing.reply_to.metadata.get('channel_id', "")
 
         return {
             'to': to_addr,
