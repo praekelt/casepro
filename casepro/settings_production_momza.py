@@ -4,6 +4,12 @@ import os
 # import our default settings
 from settings_production import *  # noqa
 
+
+LOGGING['loggers']['casepro.backend.junebug'] = {
+    'handlers': ['console'],
+    'level': 'INFO',
+}
+
 PODS[0]['contact_id_fieldname'] = os.environ.get(  # noqa: F405
     'REGISTRATION_CONTACT_ID_FIELDNAME',
     'registrant_id',
