@@ -67,9 +67,13 @@ class HubMessageSender(object):
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):
         if self.base_url and self.auth_token:
             json_data = self.build_outgoing_message_json(outgoing, to_addr)
-            self.session.post(
+            r = self.session.post(
                 '%s/jembi/helpdesk/outgoing/' % self.base_url,
                 json=json_data)
+            if not r.ok:
+                logger.error(
+                    "Submission to Hub unsuccessful. Code: %s Response: %s"
+                    % (r.status_code, r.text))
 
 
 class IdentityStore(object):

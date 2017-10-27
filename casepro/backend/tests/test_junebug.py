@@ -611,14 +611,14 @@ class JunebugBackendTest(BaseCasesTest):
             self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
             headers = {'Content-Type': "application/json"}
             resp = {
-                'status': 201,
+                'status': 200,
                 'code': "created",
                 'description': "message submitted",
                 'result': {
                     'id': "message-uuid-1234",
                 },
             }
-            return (201, headers, json.dumps(resp))
+            return (200, headers, json.dumps(resp))
 
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
@@ -630,14 +630,14 @@ class JunebugBackendTest(BaseCasesTest):
                 'inbound_channel_id': '66412231-4a4c-45d8-bbe1-95676ec3c5b7'})
             headers = {'Content-Type': "application/json"}
             resp = {
-                'status': 201,
+                'status': 200,
                 'code': "created",
                 'description': "message submitted",
                 'result': {
                     'id': "message-uuid-1234",
                 },
             }
-            return (201, headers, json.dumps(resp))
+            return (200, headers, json.dumps(resp))
 
         responses.add_callback(
             responses.POST, "http://localhost:8080/channels/replace-me/messages/",
@@ -675,14 +675,14 @@ class JunebugBackendTest(BaseCasesTest):
             self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
             headers = {'Content-Type': "application/json"}
             resp = {
-                'status': 201,
+                'status': 200,
                 'code': "created",
                 'description': "message submitted",
                 'result': {
                     'id': "message-uuid-1234",
                 },
             }
-            return (201, headers, json.dumps(resp))
+            return (200, headers, json.dumps(resp))
 
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
@@ -693,14 +693,14 @@ class JunebugBackendTest(BaseCasesTest):
                 'inbound_channel_id': None})
             headers = {'Content-Type': "application/json"}
             resp = {
-                'status': 201,
+                'status': 200,
                 'code': "created",
                 'description': "message submitted",
                 'result': {
                     'id': "message-uuid-1234",
                 },
             }
-            return (201, headers, json.dumps(resp))
+            return (200, headers, json.dumps(resp))
 
         responses.add_callback(
             responses.POST, "http://localhost:8080/channels/replace-me/messages/",
@@ -718,6 +718,68 @@ class JunebugBackendTest(BaseCasesTest):
 
         self.backend.push_outgoing(self.unicef, [out_msg])
         self.assertEqual(len(responses.calls), 2)
+
+    @responses.activate
+    @override_settings(
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        },
+        JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
+        JUNEBUG_HUB_AUTH_TOKEN='sample-token')
+    def test_outgoing_with_hub_push_failing(self):
+        def message_send_callback(request):
+            data = json_decode(request.body)
+            self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
+            headers = {'Content-Type': "application/json"}
+            resp = {
+                'status': 200,
+                'code': "created",
+                'description': "message submitted",
+                'result': {
+                    'id': "message-uuid-1234",
+                },
+            }
+            return (200, headers, json.dumps(resp))
+
+        def hub_outgoing_callback(request):
+            data = json_decode(request.body)
+            self.assertEqual(data, {
+                'content': "That's great", 'inbound_created_on': '2016-11-17T10:30:00+00:00',
+                'outbound_created_on': '2016-11-17T10:30:00+00:00',
+                'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id,
+                'inbound_channel_id': ''})
+            headers = {'Content-Type': "application/json"}
+            resp = {
+                "to": [
+                    "This field is required."
+                ]
+            }
+            return (400, headers, json.dumps(resp))
+
+        responses.add_callback(
+            responses.POST, "http://localhost:8080/channels/replace-me/messages/",
+            callback=message_send_callback,
+            content_type="application/json")
+        self.add_hub_outgoing_callback(hub_outgoing_callback)
+
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+
+        # for messages created manually, there is not "reply-to"
+        self.backend = JunebugBackend()
+        out_msg = self.create_outgoing(
+            self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234",
+            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc))
+
+        with mock.patch('casepro.backend.junebug.logger.error') as mock_logger:
+            self.backend.push_outgoing(self.unicef, [out_msg])
+        self.assertEqual(len(responses.calls), 2)
+        mock_logger.assert_called_once_with(
+            'Submission to Hub unsuccessful. Code: 400 Response: '
+            '{"to": ["This field is required."]}')
 
     def test_outgoing_no_urn_no_contact(self):
         """
