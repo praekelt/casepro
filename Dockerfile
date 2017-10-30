@@ -1,5 +1,5 @@
 FROM praekeltfoundation/django-bootstrap
-RUN apt-get-install.sh git libjpeg-dev zlib1g-dev libtiff-dev nodejs npm \
+RUN apt-get-install.sh git nodejs npm \
     redis-server supervisor libpq-dev gcc && \
     ln -s /usr/bin/nodejs /usr/bin/node
 
@@ -25,6 +25,7 @@ CMD ["docker-start.sh"]
 COPY . /app
 RUN pip install -e . && \
     pip install -r pip-freeze.txt && \
+    pip install -r pip-freeze-praekelt.txt && \
     npm install -g less coffee-script && \
     django-admin collectstatic --noinput &&\
     USE_DEFAULT_CACHE=True django-admin compress
