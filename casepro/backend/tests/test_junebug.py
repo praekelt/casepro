@@ -750,7 +750,8 @@ class JunebugBackendTest(BaseCasesTest):
             self.assertEqual(data, {
                 'content': "That's great", 'inbound_created_on': '2016-11-17T10:30:00+00:00',
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
-                'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id,
+                'label': '', 'reply_to': 'Hello', 'to': '+1234', 'user_id': 'C-002',
+                'helpdesk_operator_id': self.user1.id,
                 'inbound_channel_id': ''})
             headers = {'Content-Type': "application/json"}
             resp = {
@@ -767,12 +768,13 @@ class JunebugBackendTest(BaseCasesTest):
         self.add_hub_outgoing_callback(hub_outgoing_callback)
 
         bob = self.create_contact(self.unicef, "C-002", "Bob")
-
-        # for messages created manually, there is not "reply-to"
+        msg = self.create_message(
+            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc),
+            metadata={"channel_id": None})
         self.backend = JunebugBackend()
         out_msg = self.create_outgoing(
             self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234",
-            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc))
+            reply_to=msg, created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc))
 
         with mock.patch('casepro.backend.junebug.logger.error') as mock_logger:
             self.backend.push_outgoing(self.unicef, [out_msg])
