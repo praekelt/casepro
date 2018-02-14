@@ -38,7 +38,7 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 # junebug configuration
 def parse_channel_info(data):
     """
-    Expected format: `<channel_id>,<from_addr>,<api_root>;<channel_id>,<from_addr>,<api_root>;`
+    Expected format: `<channel_id>,<from_addr>,<api_url>;<channel_id>,<from_addr>,<api_url>;`
 
     Returns a tuple.
     The first item is the assumed default junebug channel which can be used as a
@@ -50,12 +50,12 @@ def parse_channel_info(data):
     channels = {}
     default_channel_id = None
     for channel in data.strip().split(';'):
-        channel_id, from_addr, api_root = channel.split(',')
+        channel_id, from_addr, api_url = channel.split(',')
         if not default_channel_id:
             default_channel_id = channel_id.strip()
         channels[channel_id.strip()] = {
             'FROM_ADDRESS': from_addr.strip(),
-            'API_ROOT': api_root.strip(),
+            'API_URL': api_url.strip(),
         }
     return default_channel_id, channels
 
@@ -72,7 +72,7 @@ else:
     JUNEBUG_CHANNELS = {
         JUNEBUG_DEFAULT_CHANNEL_ID: {
             'FROM_ADDRESS': os.environ.get('JUNEBUG_FROM_ADDRESS', None),
-            'API_ROOT': os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/'),
+            'API_URL': os.environ.get('JUNEBUG_API_URL', 'http://localhost:8080/channels/replace-me/messages/'),
         }
     }
 
