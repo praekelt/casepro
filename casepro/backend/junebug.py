@@ -249,18 +249,18 @@ class JunebugMessageSendingError(Exception):
 
 
 class JunebugMessageSender(object):
-    def __init__(self, base_url, channel_id, from_address, identity_store):
-        self.base_url = base_url
+    def __init__(self, channel_url, channel_id, from_address, identity_store):
+        self.channel_url = channel_url
         self.channel_id = channel_id
         self.from_address = from_address
         self.identity_store = identity_store
         self.session = requests.Session()
 
-        parts = urllib_parse.urlparse(base_url)
+        parts = urllib_parse.urlparse(channel_url)
         if any([parts.username, parts.password]):
             self.session.auth = (parts.username, parts.password)
             # Reconstruct URL without Auth in the URL
-            self.base_url = urllib_parse.urlunparse((
+            self.channel_url = urllib_parse.urlunparse((
                 parts.scheme,
                 '%s%s' % (parts.hostname, '' if parts.port is None else ':%s' % (parts.port,)),
                 parts.path,
@@ -270,10 +270,6 @@ class JunebugMessageSender(object):
 
         self.hub_message_sender = HubMessageSender(
             settings.JUNEBUG_HUB_BASE_URL, settings.JUNEBUG_HUB_AUTH_TOKEN)
-
-    @property
-    def url(self):
-        return '%s/channels/%s/messages/' % (self.base_url.rstrip('/'), self.channel_id)
 
     def split_urn(self, urn):
         try:
@@ -309,7 +305,7 @@ class JunebugMessageSender(object):
         for to_addr in addresses:
             data = defaults.copy()
             data['to'] = to_addr
-            self.session.post(self.url, json=data)
+            self.session.post(self.channel_url, json=data)
             self.hub_message_sender.send_helpdesk_outgoing_message(message, to_addr)
 
 
@@ -327,7 +323,7 @@ class JunebugBackend(BaseBackend):
             settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
         self.message_senders = dict([
             (channel_id, JunebugMessageSender(
-                channel_info['API_ROOT'],
+                channel_info['API_URL'],
                 channel_id,
                 channel_info['FROM_ADDRESS'],
                 self.identity_store))
@@ -336,10 +332,10 @@ class JunebugBackend(BaseBackend):
     @classmethod
     def validate_settings(cls):
         for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
-            if set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDRESS']):
+            if set(channel_info.keys()) != set(['API_URL', 'FROM_ADDRESS']):
                 raise JunebugBackendException(
                     'Bad Junebug Channel config, keys '
-                    'API_ROOT and FROM_ADDRESS are required.')
+                    'API_URL and FROM_ADDRESS are required.')
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """

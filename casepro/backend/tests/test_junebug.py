@@ -563,7 +563,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -599,7 +599,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -663,7 +663,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -724,7 +724,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -1233,7 +1233,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1262,11 +1262,11 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://bad.example.org:8080/',
+                'API_URL': 'http://bad.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             },
             'junebug-channel-id': {
-                'API_ROOT': 'http://good.example.org:8080/',
+                'API_URL': 'http://good.example.org:8080/channels/junebug-channel-id/messages/',
                 'FROM_ADDRESS': '+6789',
             }
         })
@@ -1319,7 +1319,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://username:password@auth.example.org:8080/',
+                'API_URL': 'http://username:password@auth.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             },
         })
@@ -1348,7 +1348,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://default.example.org:8080/',
+                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1401,7 +1401,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://default.example.org:8080/',
+                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
