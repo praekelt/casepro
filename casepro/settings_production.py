@@ -164,6 +164,21 @@ PODS = [{
         'IDENTITY_AUTH_TOKEN',
         'identity-store-token',
     ),
+    'stage_based_messaging_url': os.environ.get(
+        'STAGE_BASED_MESSAGING_URL', 'https://stage-based-messaging/'
+    ),
+    'stage_based_messaging_token': os.environ.get(
+        'STAGE_BASED_MESSAGING_TOKEN', 'stage-based-messaging-token'
+    ),
+    'wassup_url': os.environ.get(
+        'WASSUP_URL', 'https://wassup/'
+    ),
+    'wassup_token': os.environ.get(
+        'WASSUP_TOKEN', 'wassup-token'
+    ),
+    'wassup_number': os.environ.get(
+        'WASSUP_NUMBER', '+27820000000'
+    ),
     'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
                                            'mother_id'),
     'field_mapping': [
