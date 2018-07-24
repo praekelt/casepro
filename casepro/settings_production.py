@@ -202,3 +202,6 @@ PODS = [{
     'token': os.environ.get('SUBSCRIPTION_AUTH_TOKEN',
                             'replace-with-auth-token'),
 }]
+
+if os.environ.get('DISABLE_PODS', "").lower() == "true":
+    PODS = []
