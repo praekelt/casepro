@@ -80,7 +80,10 @@ JUNEBUG_INBOUND_URL = r'^junebug/inbound$'
 JUNEBUG_HUB_BASE_URL = os.environ.get('JUNEBUG_HUB_BASE_URL', None)
 JUNEBUG_HUB_AUTH_TOKEN = os.environ.get('JUNEBUG_HUB_AUTH_TOKEN', None)
 
-SITE_BACKEND = 'casepro.backend.junebug.JunebugBackend'
+# Backend Configuration
+
+SITE_BACKEND = os.environ.get('SITE_BACKEND', 'casepro.backend.junebug.JunebugBackend')
+SITE_EXTERNAL_CONTACT_URL = os.environ.get('SITE_EXTERNAL_CONTACT_URL', 'http://localhost:8001/contact/read/%s/')
 
 # identity store configuration
 IDENTITY_API_ROOT = os.environ.get('IDENTITY_API_ROOT',
