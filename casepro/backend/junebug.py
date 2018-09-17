@@ -1,30 +1,23 @@
-from __future__ import unicode_literals
-
+import functools
+import random
 from datetime import datetime
+from itertools import chain
+
 import dateutil.parser
-from six.moves import urllib_parse
+import pytz
+import requests
+from dash.utils import is_dict_equal
+from dash.utils.sync import BaseSyncer, sync_local_to_changes
 from django.conf import settings
 from django.conf.urls import url
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-import functools
-import random
-import requests
-import pytz
-import six
-import logging
-
-from . import BaseBackend, BaseBackendException
-from ..contacts.models import Contact, URN
+from . import BaseBackend
+from ..contacts.models import URN, Contact
 from ..msgs.models import Message
-from ..utils import uuid_to_int, json_decode
-
-from dash.utils import is_dict_equal
-from dash.utils.sync import BaseSyncer, sync_local_to_changes
-
-from itertools import chain
+from ..utils import json_decode, uuid_to_int
 
 
 logger = logging.getLogger(__name__)
@@ -37,49 +30,43 @@ class HubMessageSender(object):
         self.base_url = base_url
         self.auth_token = auth_token
         self.session = requests.Session()
-        self.session.headers.update({
-            'Authorization': "Token %s" % self.auth_token})
-        self.session.headers.update({'Content-Type': "application/json"})
+        self.session.headers.update({"Authorization": "Token %s" % self.auth_token})
+        self.session.headers.update({"Content-Type": "application/json"})
 
     def build_outgoing_message_json(self, outgoing, to_addr):
         if not outgoing.reply_to:
-            reply_to = ''
-            label = ''
+            reply_to = ""
+            label = ""
             inbound_created_on = outgoing.created_on
             inbound_channel_id = ""
         else:
             reply_to = outgoing.reply_to.text
-            label = ','.join([str(l) for l in outgoing.reply_to.labels.all()])
+            label = ",".join([str(l) for l in outgoing.reply_to.labels.all()])
             inbound_created_on = outgoing.reply_to.created_on
             inbound_channel_id = outgoing.reply_to.metadata.get('channel_id')
             if not inbound_channel_id:
                 inbound_channel_id = ""
 
         return {
-            'to': to_addr,
-            'reply_to': reply_to,
-            'content': outgoing.text,
-            'user_id': outgoing.contact.uuid,
-            'helpdesk_operator_id': outgoing.created_by.id,
-            'label': label,
-            'inbound_created_on': inbound_created_on.isoformat(),
-            'outbound_created_on': outgoing.created_on.isoformat(),
-            'inbound_channel_id': inbound_channel_id}
+            "to": to_addr,
+            "reply_to": reply_to,
+            "content": outgoing.text,
+            "user_id": outgoing.contact.uuid,
+            "helpdesk_operator_id": outgoing.created_by.id,
+            "label": label,
+            "inbound_created_on": inbound_created_on.isoformat(),
+            "outbound_created_on": outgoing.created_on.isoformat(),
+        }
 
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):
         if self.base_url and self.auth_token:
             json_data = self.build_outgoing_message_json(outgoing, to_addr)
-            r = self.session.post(
-                '%s/jembi/helpdesk/outgoing/' % self.base_url,
-                json=json_data)
-            if not r.ok:
-                logger.error(
-                    "Submission to Hub unsuccessful. Code: %s Response: %s"
-                    % (r.status_code, r.text))
+            self.session.post("%s/jembi/helpdesk/outgoing/" % self.base_url, json=json_data)
 
 
 class IdentityStore(object):
     """Implements required methods for accessing the identity data in the identity store."""
+
     def __init__(self, base_url, auth_token, address_type):
         """
         base_url: the base URL where the identity store is located
@@ -89,20 +76,17 @@ class IdentityStore(object):
         self.base_url = base_url.rstrip("/")
         self.address_type = address_type
         self.session = requests.Session()
-        self.session.headers.update({'Authorization': "Token %s" % auth_token})
-        self.session.headers.update({'Content-Type': "application/json"})
+        self.session.headers.update({"Authorization": "Token %s" % auth_token})
+        self.session.headers.update({"Content-Type": "application/json"})
 
     def get_paginated_response(self, url, params={}, pages=False, **kwargs):
         """Get the results of all pages of a response. Returns an iterator that returns each of the items."""
         while url is not None:
             r = self.session.get(url, params=params, **kwargs)
             data = r.json()
-            if pages:
-                yield data.get('results', [])
-            else:
-                for result in data.get('results', []):
-                    yield result
-            url = data.get('next', None)
+            for result in data.get("results", []):
+                yield result
+            url = data.get("next", None)
             # params are included in the next url
             params = {}
 
@@ -116,87 +100,81 @@ class IdentityStore(object):
     def get_addresses(self, uuid):
         """Get the list of addresses that a message to an identity specified by uuid should be sent to."""
         identity = self.get_identity(uuid)
-        if identity and identity.get('communicate_through') is not None:
-            identity = self.get_identity(identity['communicate_through'])
+        if identity and identity.get("communicate_through") is not None:
+            identity = self.get_identity(identity["communicate_through"])
         addresses = self.get_paginated_response(
-            "%s/api/v1/identities/%s/addresses/%s" % (self.base_url, identity['id'], self.address_type),
-            params={'default': True})
-        return (
-            a['address'] for a in addresses if a.get('address') is not None)
+            "%s/api/v1/identities/%s/addresses/%s" % (self.base_url, identity["id"], self.address_type),
+            params={"default": True},
+        )
+        return (a["address"] for a in addresses if a.get("address") is not None)
 
     def get_identities_for_address(self, address, address_type=None):
         if address_type is None:
             address_type = self.address_type
 
         return self.get_paginated_response(
-            "%s/api/v1/identities/search/" % (self.base_url),
-            params={'details__addresses__%s' % address_type: address})
+            "%s/api/v1/identities/search/" % (self.base_url), params={"details__addresses__%s" % address_type: address}
+        )
 
     def create_identity(self, addresses, name=None, language=None):
         """Creates an identity on the identity store, given the details of the identity."""
         address_dict = {}
         for address in addresses:
-            type_, addr = address.split(':', 1)
+            type_, addr = address.split(":", 1)
             if type_ == "tel":
                 type_ = "msisdn"
             address_dict[type_] = {addr: {}}
         identity = self.session.post(
             "%s/api/v1/identities/" % (self.base_url,),
             json={
-                'details': {
-                    'addresses': address_dict,
-                    'default_addr_type': self.address_type,
-                    'name': name,
-                    'language': language,
-                },
-            }
+                "details": {
+                    "addresses": address_dict,
+                    "default_addr_type": self.address_type,
+                    "name": name,
+                    "language": language,
+                }
+            },
         )
         return identity.json()
 
     def get_identities(self, **params):
-        """
-        Get the list of identities filtered by the given kwargs. Returns an iterator that yields an array of
-        identities per iteration.
-        """
-        url = '%s/api/v1/identities/?' % self.base_url
+        """Get the list of identities filtered by the given kwargs."""
+        url = "%s/api/v1/identities/?" % self.base_url
 
         identities = self.get_paginated_response(url, pages=True, params=params)
 
         # Users who opt to be forgotten from the system have their details
-        # stored as 'redacted'. Language field is a good field to check, since
-        # every user that we send messages to has to have a language set.
-        language_field = getattr(settings, 'IDENTITY_LANGUAGE_FIELD', "language")
-        for page in identities:
-            yield [IdentityStoreContact(i) for i in page if i.get('details').get(language_field) != "redacted"]
+        # stored as 'redacted'.
+        return (IdentityStoreContact(i) for i in identities if i.get("details").get("name") != "redacted")
 
 
 class IdentityStoreContact(object):
     """
     Holds identity data for syncing
     """
+
     def __init__(self, json_data):
         for k, v in json_data.items():
             setattr(self, k, v)
 
         # Languages in the identity store have the country code at the end
         self.language = None
-        language_field = getattr(settings, 'IDENTITY_LANGUAGE_FIELD', "language")
-        remote_language = json_data.get('details').get(language_field)
+        language_field = getattr(settings, "IDENTITY_LANGUAGE_FIELD", "language")
+        remote_language = json_data.get("details").get(language_field)
         if remote_language is not None:
-            self.language, _, _ = remote_language.partition('_')
-            self.language = self.language[:3]
-        self.name = json_data.get('details').get('name', None)
+            self.language, _, _ = remote_language.partition("_")
+        self.name = json_data.get("details").get("name", None)
         self.fields = {}
         self.groups = {}
-        addresses = json_data.get('details').get('addresses')
+        addresses = json_data.get("details").get("addresses")
         self.urns = []
         for scheme, address in addresses.items():
             scheme_addresses = []
             for urn, details in address.items():
-                if 'optedout' in details and details['optedout'] is True:
+                if "optedout" in details and details["optedout"] is True:
                     # Skip opted out URNs
                     continue
-                if 'default' in details and details['default'] is True:
+                if "default" in details and details["default"] is True:
                     # If a default is set for the scheme then only store the default
                     scheme_addresses = [urn]
                     break
@@ -211,20 +189,24 @@ class IdentityStoreContactSyncer(BaseSyncer):
     """
     Syncer for contacts from the Identity Store
     """
+
     model = Contact
-    remote_id_attr = 'id'
+    remote_id_attr = "id"
+
+    def __init__(self):
+        self.backend = None
 
     def local_kwargs(self, org, remote):
         return {
-            'org': org,
-            'uuid': remote.id,
-            'name': remote.name,
-            'language': remote.language,
-            'is_blocked': False,  # TODO: Get 'is_blocked' from Opt-outs
-            'is_stub': False,
-            'fields': {},
+            "org": org,
+            "uuid": remote.id,
+            "name": remote.name,
+            "language": remote.language,
+            "is_blocked": False,  # TODO: Get 'is_blocked' from Opt-outs
+            "is_stub": False,
+            "fields": {},
             Contact.SAVE_GROUPS_ATTR: {},
-            'urns': remote.urns,
+            "urns": remote.urns,
         }
 
     def update_required(self, local, remote, remote_as_kwargs):
@@ -255,25 +237,15 @@ class JunebugMessageSender(object):
         self.from_address = from_address
         self.identity_store = identity_store
         self.session = requests.Session()
+        self.hub_message_sender = HubMessageSender(settings.JUNEBUG_HUB_BASE_URL, settings.JUNEBUG_HUB_AUTH_TOKEN)
 
-        parts = urllib_parse.urlparse(channel_url)
-        if any([parts.username, parts.password]):
-            self.session.auth = (parts.username, parts.password)
-            # Reconstruct URL without Auth in the URL
-            self.channel_url = urllib_parse.urlunparse((
-                parts.scheme,
-                '%s%s' % (parts.hostname, '' if parts.port is None else ':%s' % (parts.port,)),
-                parts.path,
-                parts.params,
-                parts.query,
-                parts.fragment))
-
-        self.hub_message_sender = HubMessageSender(
-            settings.JUNEBUG_HUB_BASE_URL, settings.JUNEBUG_HUB_AUTH_TOKEN)
+    @property
+    def url(self):
+        return "%s/channels/%s/messages/" % (self.base_url.rstrip("/"), self.channel_id)
 
     def split_urn(self, urn):
         try:
-            type_, address = urn.split(':', 1)
+            type_, address = urn.split(":", 1)
         except ValueError:
             raise JunebugMessageSendingError("Invalid URN: %s" % urn)
         return type_, address
@@ -303,9 +275,8 @@ class JunebugMessageSender(object):
             defaults['reply_to'] = inbound_message_id
 
         for to_addr in addresses:
-            data = defaults.copy()
-            data['to'] = to_addr
-            self.session.post(self.channel_url, json=data)
+            data = {"to": to_addr, "from": self.from_address, "content": message.text}
+            self.session.post(self.url, json=data)
             self.hub_message_sender.send_helpdesk_outgoing_message(message, to_addr)
 
 
@@ -320,22 +291,11 @@ class JunebugBackend(BaseBackend):
 
     def __init__(self):
         self.identity_store = IdentityStore(
-            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
-        self.message_senders = dict([
-            (channel_id, JunebugMessageSender(
-                channel_info['API_URL'],
-                channel_id,
-                channel_info['FROM_ADDRESS'],
-                self.identity_store))
-            for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
-
-    @classmethod
-    def validate_settings(cls):
-        for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
-            if set(channel_info.keys()) != set(['API_URL', 'FROM_ADDRESS']):
-                raise JunebugBackendException(
-                    'Bad Junebug Channel config, keys '
-                    'API_URL and FROM_ADDRESS are required.')
+            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE
+        )
+        self.message_sender = JunebugMessageSender(
+            settings.JUNEBUG_API_ROOT, settings.JUNEBUG_CHANNEL_ID, settings.JUNEBUG_FROM_ADDRESS, self.identity_store
+        )
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """
@@ -461,10 +421,11 @@ class JunebugBackend(BaseBackend):
             return
 
         identity_store = IdentityStore(
-            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
+            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE
+        )
         identities = []
         for urn in contact.urns:
-            addr_type, addr = urn.split(':', 1)
+            addr_type, addr = urn.split(":", 1)
             if addr_type == "tel":
                 addr_type = "msisdn"
             identities.extend(identity_store.get_identities_for_address(addr, addr_type))
@@ -474,8 +435,8 @@ class JunebugBackend(BaseBackend):
             identity = identities[0]
         else:
             identity = identity_store.create_identity(contact.urns, name=contact.name, language=contact.language)
-        contact.uuid = identity.get('id')
-        contact.save(update_fields=('uuid',))
+        contact.uuid = identity.get("id")
+        contact.save(update_fields=("uuid",))
 
     def add_to_group(self, org, contact, group):
         """
@@ -561,8 +522,7 @@ class JunebugBackend(BaseBackend):
         :param messages: the messages
         """
 
-    def fetch_contact_messages(
-            self, org, contact, created_after, created_before):
+    def fetch_contact_messages(self, org, contact, created_after, created_before):
         """
         Fetches additional messages to display on a case timeline
 
@@ -575,6 +535,17 @@ class JunebugBackend(BaseBackend):
             Message.as_json() for incoming messages and Outgoing.as_json() for outgoing messages.
         """
         return []
+
+    def fetch_flows(self, org):  # pragma: no cover
+        """
+        Fetches flows which can be used as a follow-up flow
+        """
+        return []
+
+    def start_flow(self, org, flow, contact, extra):  # pragma: no cover
+        """
+        Starts the given contact in the given flow
+        """
 
     def get_url_patterns(self):
         """
@@ -589,16 +560,16 @@ class JunebugBackend(BaseBackend):
 
 
 def token_auth_required(auth_token_func):
-    '''Decorates a function so that token authentication is required to run it'''
+    """Decorates a function so that token authentication is required to run it"""
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
-            auth_header = request.META.get('HTTP_AUTHORIZATION', None)
+            auth_header = request.META.get("HTTP_AUTHORIZATION", None)
             expected_auth_token = auth_token_func()
             if not auth_header:
-                response = JsonResponse(
-                    {"reason": "Authentication required"}, status=401)
-                response['WWW-Authenticate'] = "Token"
+                response = JsonResponse({"reason": "Authentication required"}, status=401)
+                response["WWW-Authenticate"] = "Token"
                 return response
             auth = auth_header.split(" ")
             if auth != ["Token", expected_auth_token]:
@@ -606,6 +577,7 @@ def token_auth_required(auth_token_func):
             return func(request, *args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -613,33 +585,29 @@ def token_auth_required(auth_token_func):
 def received_junebug_message(request):
     """Handles MO messages from Junebug."""
     if request.method != "POST":
-        return JsonResponse({'reason': "Method not allowed."}, status=405)
+        return JsonResponse({"reason": "Method not allowed."}, status=405)
 
     try:
         data = json_decode(request.body)
     except ValueError as e:
-        return JsonResponse({'reason': "JSON decode error", 'details': six.text_type(e)}, status=400)
+        return JsonResponse({"reason": "JSON decode error", "details": str(e)}, status=400)
 
-    from_addr = URN.normalize_phone(data.get('from'))
+    from_addr = URN.normalize_phone(data.get("from"))
 
     identity_store = IdentityStore(
-        settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
+        settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE
+    )
     identities = identity_store.get_identities_for_address(from_addr)
     try:
         identity = next(identities)
     except StopIteration:
-        identity = identity_store.create_identity(['%s:%s' % (settings.IDENTITY_ADDRESS_TYPE, from_addr)])
-    contact = Contact.get_or_create(request.org, identity.get('id'))
+        identity = identity_store.create_identity(["%s:%s" % (settings.IDENTITY_ADDRESS_TYPE, from_addr)])
+    contact = Contact.get_or_create(request.org, identity.get("id"))
 
-    message_id = uuid_to_int(data.get('message_id'))
-    metadata = {
-        'backend': 'casepro.backend.junebug.JunebugBackend',
-        'channel_id': data.get('channel_id'),
-        'message_id': data.get('message_id'),
-    }
+    message_id = uuid_to_int(data.get("message_id"))
 
-    if 'timestamp' in data:
-        timestamp = dateutil.parser.parse(data['timestamp'])
+    if "timestamp" in data:
+        timestamp = dateutil.parser.parse(data["timestamp"])
         if not timestamp.tzinfo:
             # Assume UTC
             timestamp = pytz.utc.localize(timestamp)
@@ -650,9 +618,14 @@ def received_junebug_message(request):
         # First try with the backend_id generated from the UUID
         with transaction.atomic():
             msg = Message.objects.create(
-                org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
-                metadata=metadata)
+                org=request.org,
+                backend_id=message_id,
+                contact=contact,
+                type=Message.TYPE_INBOX,
+                text=(data.get("content") or ""),
+                created_on=timestamp,
+                has_labels=True,
+            )
     except IntegrityError as e:
         # If there's a clash, try to generate a random one that doesn't result in a clash
         msg = None
@@ -661,9 +634,14 @@ def received_junebug_message(request):
             try:
                 with transaction.atomic():
                     msg = Message.objects.create(
-                        org=request.org, backend_id=message_id, contact=contact, type=Message.TYPE_INBOX,
-                        text=(data.get('content') or ''), created_on=timestamp, has_labels=True,
-                        metadata=metadata)
+                        org=request.org,
+                        backend_id=message_id,
+                        contact=contact,
+                        type=Message.TYPE_INBOX,
+                        text=(data.get("content") or ""),
+                        created_on=timestamp,
+                        has_labels=True,
+                    )
                 break
             except IntegrityError:
                 pass
@@ -683,18 +661,18 @@ def seed_auth_token():
 def receive_identity_store_optout(request):
     """Handles optout notifications from the Identity Store."""
     if request.method != "POST":
-        return JsonResponse({'reason': "Method not allowed."}, status=405)
+        return JsonResponse({"reason": "Method not allowed."}, status=405)
 
     try:
         data = json_decode(request.body)
     except ValueError as e:
-        return JsonResponse({'reason': "JSON decode error", 'details': six.text_type(e)}, status=400)
+        return JsonResponse({"reason": "JSON decode error", "details": str(e)}, status=400)
 
     try:
-        identity_id = data['identity']
-        optout_type = data['optout_type']
+        identity_id = data["identity"]
+        optout_type = data["optout_type"]
     except KeyError as e:
-        return JsonResponse({'reason': 'Both "identity" and "optout_type" must be specified.'}, status=400)
+        return JsonResponse({"reason": 'Both "identity" and "optout_type" must be specified.'}, status=400)
 
     # The identity store currently doesn't specify the response format or do
     # anything with the response.
@@ -705,28 +683,28 @@ def receive_identity_store_optout(request):
     with syncer.lock(org, identity_id):
         local_contact = syncer.fetch_local(org, identity_id)
         if not local_contact:
-            return JsonResponse({'reason': "No Contact for id: " + identity_id}, status=400)
+            return JsonResponse({"reason": "No Contact for id: " + identity_id}, status=400)
 
         if optout_type == "forget":
             local_contact.urns = []
             local_contact.save()
 
-            local_contact.incoming_messages.update(text='<redacted>')
-            local_contact.outgoing_messages.update(text='<redacted>', urn='<redacted>')
+            local_contact.incoming_messages.update(text="<redacted>")
+            local_contact.outgoing_messages.update(text="<redacted>", urn="<redacted>")
 
             for incoming in local_contact.incoming_messages.all().iterator():
-                incoming.replies.update(text='<redacted>', urn='<redacted>')
+                incoming.replies.update(text="<redacted>", urn="<redacted>")
 
             local_contact.release()
-            return JsonResponse({'success': True}, status=200)
+            return JsonResponse({"success": True}, status=200)
 
         elif optout_type == "stop" or optout_type == "stopall":
             local_contact.is_blocked = True
             local_contact.save(update_fields=("is_blocked",))
-            return JsonResponse({'success': True}, status=200)
+            return JsonResponse({"success": True}, status=200)
 
         elif optout_type == "unsubscribe":
             # This case is not relevant to Casepro
-            return JsonResponse({'success': True}, status=200)
+            return JsonResponse({"success": True}, status=200)
 
-    return JsonResponse({'reason': 'Unrecognised value for "optout_type": ' + optout_type}, status=400)
+    return JsonResponse({"reason": 'Unrecognised value for "optout_type": ' + optout_type}, status=400)

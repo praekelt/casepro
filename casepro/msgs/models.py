@@ -1,6 +1,5 @@
-from __future__ import unicode_literals
-
-import six
+from datetime import timedelta
+from enum import Enum
 
 from dash.orgs.models import Org
 from dash.utils import get_obj_cacheable
@@ -8,22 +7,18 @@ from django.contrib.auth.models import User
 from django.contrib.postgres.fields import HStoreField
 from django.core.exceptions import PermissionDenied
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
+from django.db.models import Q
 from django.utils.timesince import timesince
 from django.utils.timezone import now
-from django.db.models import Q
-from enum import Enum
+from django.utils.translation import ugettext_lazy as _
 from django_redis import get_redis_connection
-from datetime import timedelta
 
-from casepro.backend import get_backend
 from casepro.contacts.models import Contact, Field
-from casepro.utils import json_encode, get_language_name
+from casepro.utils import get_language_name, json_encode
 from casepro.utils.export import BaseSearchExport
 
-LABEL_LOCK_KEY = 'lock:label:%d:%s'
-MESSAGE_LOCK_KEY = 'lock:message:%d:%d'
+LABEL_LOCK_KEY = "lock:label:%d:%s"
+MESSAGE_LOCK_KEY = "lock:message:%d:%d"
 MESSAGE_LOCK_SECONDS = 300
 
 
@@ -38,12 +33,12 @@ class OutgoingFolder(Enum):
     sent = 1
 
 
-@python_2_unicode_compatible
 class Label(models.Model):
     """
     Corresponds to a message label in RapidPro. Used for determining visibility of messages to different partners.
     """
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='labels')
+
+    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name="labels", on_delete=models.PROTECT)
 
     uuid = models.CharField(max_length=36, unique=True, null=True)
 
@@ -51,20 +46,20 @@ class Label(models.Model):
 
     description = models.CharField(verbose_name=_("Description"), null=True, max_length=255)
 
-    rule = models.OneToOneField('rules.Rule', null=True)
+    rule = models.OneToOneField("rules.Rule", null=True, on_delete=models.PROTECT)
 
-    is_synced = models.BooleanField(
-        default=True,
-        help_text="Whether this label should be synced with the backend"
+    is_synced = models.BooleanField(default=True, help_text="Whether this label should be synced with the backend")
+
+    watchers = models.ManyToManyField(
+        User, related_name="watched_labels", help_text="Users to be notified when label is applied to a message"
     )
-
-    watchers = models.ManyToManyField(User, related_name='watched_labels',
-                                      help_text="Users to be notified when label is applied to a message")
 
     is_active = models.BooleanField(default=True, help_text="Whether this label is active")
 
-    INBOX_COUNT_CACHE_ATTR = '_inbox_count'
-    ARCHIVED_COUNT_CACHE_ATTR = '_archived_count'
+    INBOX_COUNT_CACHE_ATTR = "_inbox_count"
+    ARCHIVED_COUNT_CACHE_ATTR = "_archived_count"
+
+    MAX_NAME_LEN = 64
 
     @classmethod
     def create(cls, org, name, description, tests, is_synced):
@@ -87,15 +82,15 @@ class Label(models.Model):
         if tests:
             if self.rule:
                 self.rule.tests = json_encode(tests)
-                self.rule.save(update_fields=('tests',))
+                self.rule.save(update_fields=("tests",))
             else:
                 self.rule = Rule.create(self.org, tests, [LabelAction(self)])
-                self.save(update_fields=('rule',))
+                self.save(update_fields=("rule",))
         else:
             if self.rule:
                 rule = self.rule
                 self.rule = None
-                self.save(update_fields=('rule',))
+                self.save(update_fields=("rule",))
 
                 rule.delete()
 
@@ -108,8 +103,9 @@ class Label(models.Model):
         """
         return get_obj_cacheable(self, self.INBOX_COUNT_CACHE_ATTR, lambda: self._get_inbox_count(), recalculate)
 
-    def _get_inbox_count(self, ):
+    def _get_inbox_count(self,):
         from casepro.statistics.models import TotalCount
+
         return TotalCount.get_by_label([self], TotalCount.TYPE_INBOX).scope_totals()[self]
 
     def get_archived_count(self, recalculate=False):
@@ -120,6 +116,7 @@ class Label(models.Model):
 
     def _get_archived_count(self):
         from casepro.statistics.models import TotalCount
+
         return TotalCount.get_by_label([self], TotalCount.TYPE_ARCHIVED).scope_totals()[self]
 
     @classmethod
@@ -157,18 +154,18 @@ class Label(models.Model):
 
         self.rule = None
         self.is_active = False
-        self.save(update_fields=('rule', 'is_active'))
+        self.save(update_fields=("rule", "is_active"))
 
         if rule:
             rule.delete()
 
     def as_json(self, full=True):
-        result = {'id': self.pk, 'name': self.name}
+        result = {"id": self.pk, "name": self.name}
 
         if full:
-            result['description'] = self.description
-            result['synced'] = self.is_synced
-            result['counts'] = {'inbox': self.get_inbox_count(), 'archived': self.get_archived_count()}
+            result["description"] = self.description
+            result["synced"] = self.is_synced
+            result["counts"] = {"inbox": self.get_inbox_count(), "archived": self.get_archived_count()}
 
         return result
 
@@ -176,23 +173,24 @@ class Label(models.Model):
         return self.name
 
 
-@python_2_unicode_compatible
 class FAQ(models.Model):
     """
     Pre-approved questions and answers to be used when replying to a message.
     """
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='faqs')
+
+    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name="faqs", on_delete=models.PROTECT)
 
     question = models.CharField(max_length=255)
 
     answer = models.TextField()
 
-    language = models.CharField(max_length=3, verbose_name=_("Language"), null=True, blank=True,
-                                help_text=_("Language for this FAQ"))
+    language = models.CharField(
+        max_length=3, verbose_name=_("Language"), null=True, blank=True, help_text=_("Language for this FAQ")
+    )
 
-    parent = models.ForeignKey('self', null=True, blank=True, related_name='translations')
+    parent = models.ForeignKey("self", null=True, blank=True, related_name="translations", on_delete=models.PROTECT)
 
-    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this FAQ"), related_name='faqs')
+    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this FAQ"), related_name="faqs")
 
     @classmethod
     def create(cls, org, question, answer, language, parent, labels=(), **kwargs):
@@ -211,9 +209,9 @@ class FAQ(models.Model):
         """
         Search for FAQs
         """
-        language = search.get('language')
-        label_id = search.get('label')
-        text = search.get('text')
+        language = search.get("language")
+        label_id = search.get("label")
+        text = search.get("text")
 
         queryset = cls.objects.filter(org=org)
 
@@ -236,9 +234,9 @@ class FAQ(models.Model):
         if text:
             queryset = queryset.filter(Q(question__icontains=text) | Q(answer__icontains=text))
 
-        queryset = queryset.prefetch_related('labels', 'parent__labels')
+        queryset = queryset.prefetch_related("labels", "parent__labels")
 
-        return queryset.order_by('question')
+        return queryset.order_by("question")
 
     @classmethod
     def get_all(cls, org, label=None):
@@ -251,12 +249,12 @@ class FAQ(models.Model):
 
     @staticmethod
     def get_language_from_code(code):
-        return {'code': code, 'name': get_language_name(code)}
+        return {"code": code, "name": get_language_name(code)}
 
     @classmethod
     def get_all_languages(cls, org):
         queryset = cls.objects.filter(org=org)
-        return queryset.values('language').order_by('language').distinct()
+        return queryset.values("language").order_by("language").distinct()
 
     def get_language(self):
         if self.language:
@@ -264,19 +262,24 @@ class FAQ(models.Model):
         else:
             return None
 
+    def release(self):
+        for child in self.translations.all():
+            child.release()
+        self.delete()
+
     def as_json(self, full=True):
-        result = {'id': self.pk, 'question': self.question}
+        result = {"id": self.pk, "question": self.question}
         if full:
             if not self.parent:
                 parent_json = None
-                result['labels'] = [l.as_json() for l in self.labels.all()]
+                result["labels"] = [l.as_json() for l in self.labels.all()]
             else:
                 parent_json = self.parent.id
-                result['labels'] = [l.as_json() for l in self.parent.labels.all()]
+                result["labels"] = [l.as_json() for l in self.parent.labels.all()]
 
-            result['answer'] = self.answer
-            result['language'] = self.get_language()
-            result['parent'] = parent_json
+            result["answer"] = self.answer
+            result["language"] = self.get_language()
+            result["parent"] = parent_json
 
         return result
 
@@ -284,34 +287,50 @@ class FAQ(models.Model):
         return self.question
 
 
-@python_2_unicode_compatible
+class Labelling(models.Model):
+    """
+    An application of a label to a message
+    """
+
+    message = models.ForeignKey("msgs.Message", on_delete=models.CASCADE)
+
+    label = models.ForeignKey(Label, on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = "msgs_message_labels"
+        unique_together = ("message", "label")
+
+
 class Message(models.Model):
     """
     A incoming message from the backend
     """
-    TYPE_INBOX = 'I'
-    TYPE_FLOW = 'F'
+
+    TYPE_INBOX = "I"
+    TYPE_FLOW = "F"
 
     TYPE_CHOICES = ((TYPE_INBOX, _("Inbox")), (TYPE_FLOW, _("Flow")))
 
-    SAVE_CONTACT_ATTR = '__data__contact'
-    SAVE_LABELS_ATTR = '__data__labels'
+    SAVE_CONTACT_ATTR = "__data__contact"
+    SAVE_LABELS_ATTR = "__data__labels"
 
-    TIMELINE_TYPE = 'I'
+    TIMELINE_TYPE = "I"
 
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='incoming_messages')
+    org = models.ForeignKey(
+        Org, verbose_name=_("Organization"), related_name="incoming_messages", on_delete=models.PROTECT
+    )
 
     backend_id = models.IntegerField(unique=True, help_text=_("Backend identifier for this message"))
 
-    metadata = HStoreField(blank=True, null=True, default={}, help_text=_('Metadata for the received message.'))
-
-    contact = models.ForeignKey(Contact, related_name='incoming_messages')
+    contact = models.ForeignKey(Contact, related_name="incoming_messages", on_delete=models.PROTECT)
 
     type = models.CharField(max_length=1)
 
     text = models.TextField(max_length=640, verbose_name=_("Text"))
 
-    labels = models.ManyToManyField(Label, help_text=_("Labels assigned to this message"), related_name='messages')
+    labels = models.ManyToManyField(
+        Label, through=Labelling, help_text=_("Labels assigned to this message"), related_name="messages"
+    )
 
     has_labels = models.BooleanField(default=False)  # maintained via db triggers
 
@@ -321,15 +340,17 @@ class Message(models.Model):
 
     created_on = models.DateTimeField()
 
+    modified_on = models.DateTimeField(null=True, help_text="When message was last modified", default=now)
+
     is_handled = models.BooleanField(default=False)
 
     is_active = models.BooleanField(default=True)
 
-    case = models.ForeignKey('cases.Case', null=True, related_name="incoming_messages")
+    case = models.ForeignKey("cases.Case", null=True, related_name="incoming_messages", on_delete=models.PROTECT)
 
     locked_on = models.DateTimeField(null=True, help_text="Last action taken on this message")
 
-    locked_by = models.ForeignKey(User, null=True, related_name='actioned_messages')
+    locked_by = models.ForeignKey(User, null=True, related_name="actioned_messages", on_delete=models.PROTECT)
 
     def __init__(self, *args, **kwargs):
         if self.SAVE_CONTACT_ATTR in kwargs:
@@ -352,15 +373,14 @@ class Message(models.Model):
         """
         Search for messages
         """
-        folder = search.get('folder')
-        label_id = search.get('label')
-        include_archived = search.get('include_archived')
-        text = search.get('text')
-        contact_id = search.get('contact')
-        group_ids = search.get('groups')
-        after = search.get('after')
-        before = search.get('before')
-        last_refresh = search.get('last_refresh')
+        folder = search.get("folder")
+        label_id = search.get("label")
+        include_archived = search.get("include_archived")
+        text = search.get("text")
+        contact_id = search.get("contact")
+        after = search.get("after")
+        before = search.get("before")
+        last_refresh = search.get("last_refresh")
 
         # only show non-deleted handled messages
         queryset = org.incoming_messages.filter(is_active=True, is_handled=True)
@@ -390,10 +410,9 @@ class Message(models.Model):
             if folder == MessageFolder.unlabelled:
                 raise ValueError("Unlabelled folder is only accessible to administrators")
 
-        # if this is a refresh we want everything with new actions
+        # if this is a refresh we want everything with new actions and locks
         if last_refresh:
-            queryset = queryset.filter(actions__created_on__gt=last_refresh) |\
-                       queryset.filter(locked_on__gt=last_refresh)
+            queryset = queryset.filter(modified_on__gt=last_refresh)
         else:
             # only show flagged messages in flagged folder
             if folder == MessageFolder.flagged:
@@ -413,31 +432,28 @@ class Message(models.Model):
 
         if contact_id:
             queryset = queryset.filter(contact__pk=contact_id)
-        if group_ids:
-            queryset = queryset.filter(contact__groups__pk__in=group_ids).distinct()
 
         if after and not last_refresh:
             queryset = queryset.filter(created_on__gt=after)
         if before:
             queryset = queryset.filter(created_on__lt=before)
 
-        queryset = queryset.prefetch_related('contact', 'labels', 'case__assignee', 'case__user_assignee')
+        queryset = queryset.prefetch_related("contact", "labels", "case__assignee", "case__user_assignee")
 
-        return queryset.order_by('-created_on')
+        return queryset.order_by("-created_on")
 
     def get_history(self):
         """
         Gets the actions for this message in reverse chronological order
         :return: the actions
         """
-        return self.actions.select_related('created_by', 'label').order_by('-pk')
+        return self.actions.select_related("created_by", "label").order_by("-pk")
 
     def get_lock(self, user):
-        if self.locked_on and self.locked_by_id:
-            if self.locked_on > (now() - timedelta(seconds=MESSAGE_LOCK_SECONDS)):
-                if self.locked_by_id != user.id:
-                    diff = (self.locked_on + timedelta(seconds=MESSAGE_LOCK_SECONDS)) - now()
-                    return diff.seconds
+        if self.locked_by_id and self.locked_on and self.locked_on > (now() - timedelta(seconds=MESSAGE_LOCK_SECONDS)):
+            if self.locked_by_id != user.id:
+                diff = (self.locked_on + timedelta(seconds=MESSAGE_LOCK_SECONDS)) - now()
+                return diff.seconds
 
         return False
 
@@ -448,15 +464,24 @@ class Message(models.Model):
         self.labels.clear()
 
         self.is_active = False
-        self.save(update_fields=('is_active',))
+        self.modified_on = now()
+        self.save(update_fields=("is_active", "modified_on"))
 
     def label(self, *labels):
         """
         Adds the given labels to this message
         """
         from casepro.profiles.models import Notification
+        from casepro.statistics.models import DailyCount, datetime_to_date
 
-        self.labels.add(*labels)
+        existing_label_ids = Labelling.objects.filter(message=self, label__in=labels).values_list("label", flat=True)
+        add_labels = [l for l in labels if l.id not in existing_label_ids]
+        new_labellings = [Labelling(message=self, label=l) for l in add_labels]
+        Labelling.objects.bulk_create(new_labellings)
+
+        day = datetime_to_date(self.created_on, self.org)
+        for label in add_labels:
+            DailyCount.record_item(day, DailyCount.TYPE_INCOMING, label)
 
         # notify all users who watch these labels
         for watcher in set(User.objects.filter(watched_labels__in=labels)):
@@ -466,7 +491,27 @@ class Message(models.Model):
         """
         Removes the given labels from this message
         """
-        self.labels.remove(*labels)
+        from casepro.statistics.models import DailyCount, datetime_to_date
+
+        existing_labellings = Labelling.objects.filter(message=self, label__in=labels).select_related("label")
+
+        day = datetime_to_date(self.created_on, self.org)
+        for labelling in existing_labellings:
+            DailyCount.record_removal(day, DailyCount.TYPE_INCOMING, labelling.label)
+
+        Labelling.objects.filter(id__in=[l.id for l in existing_labellings]).delete()
+
+    def clear_labels(self):
+        """
+        Removes all labels from this message
+        """
+        from casepro.statistics.models import DailyCount, datetime_to_date
+
+        day = datetime_to_date(self.created_on, self.org)
+        for label in self.labels.all():
+            DailyCount.record_removal(day, DailyCount.TYPE_INCOMING, label)
+
+        Labelling.objects.filter(message=self).delete()
 
     def update_labels(self, user, labels):
         """
@@ -483,13 +528,33 @@ class Message(models.Model):
             for label in rem_labels:
                 self.bulk_unlabel(self.org, user, [self], label)
 
+    def user_lock(self, user):
+        """
+        Marks this message as locked by a user
+        """
+        self.locked_on = now()
+        self.locked_by = user
+        self.modified_on = now()
+        self.save(update_fields=("locked_on", "locked_by", "modified_on"))
+
+    def user_unlock(self):
+        """
+        Marks this message as no longer locked by a user
+        """
+        self.locked_on = None
+        self.locked_by = None
+        self.modified_on = now()
+        self.save(update_fields=("locked_on", "locked_by", "modified_on"))
+
     @staticmethod
     def bulk_flag(org, user, messages):
         messages = list(messages)
         if messages:
-            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(is_flagged=True)
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(
+                is_flagged=True, modified_on=now()
+            )
 
-            get_backend().flag_messages(org, messages)
+            org.get_backend().flag_messages(org, messages)
 
             MessageAction.create(org, user, messages, MessageAction.FLAG)
 
@@ -497,9 +562,11 @@ class Message(models.Model):
     def bulk_unflag(org, user, messages):
         messages = list(messages)
         if messages:
-            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(is_flagged=False)
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(
+                is_flagged=False, modified_on=now()
+            )
 
-            get_backend().unflag_messages(org, messages)
+            org.get_backend().unflag_messages(org, messages)
 
             MessageAction.create(org, user, messages, MessageAction.UNFLAG)
 
@@ -510,8 +577,10 @@ class Message(models.Model):
             for msg in messages:
                 msg.label(label)
 
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(modified_on=now())
+
             if label.is_synced:
-                get_backend().label_messages(org, messages, label)
+                org.get_backend().label_messages(org, messages, label)
 
             MessageAction.create(org, user, messages, MessageAction.LABEL, label)
 
@@ -522,8 +591,10 @@ class Message(models.Model):
             for msg in messages:
                 msg.unlabel(label)
 
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(modified_on=now())
+
             if label.is_synced:
-                get_backend().unlabel_messages(org, messages, label)
+                org.get_backend().unlabel_messages(org, messages, label)
 
             MessageAction.create(org, user, messages, MessageAction.UNLABEL, label)
 
@@ -531,9 +602,11 @@ class Message(models.Model):
     def bulk_archive(org, user, messages):
         messages = list(messages)
         if messages:
-            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(is_archived=True)
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(
+                is_archived=True, modified_on=now()
+            )
 
-            get_backend().archive_messages(org, messages)
+            org.get_backend().archive_messages(org, messages)
 
             MessageAction.create(org, user, messages, MessageAction.ARCHIVE)
 
@@ -541,9 +614,11 @@ class Message(models.Model):
     def bulk_restore(org, user, messages):
         messages = list(messages)
         if messages:
-            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(is_archived=False)
+            org.incoming_messages.filter(org=org, pk__in=[m.pk for m in messages]).update(
+                is_archived=False, modified_on=now()
+            )
 
-            get_backend().restore_messages(org, messages)
+            org.get_backend().restore_messages(org, messages)
 
             MessageAction.create(org, user, messages, MessageAction.RESTORE)
 
@@ -552,15 +627,15 @@ class Message(models.Model):
         Prepares this message for JSON serialization
         """
         return {
-            'id': self.backend_id,
-            'contact': self.contact.as_json(full=False),
-            'text': self.text,
-            'time': self.created_on,
-            'labels': [l.as_json(full=False) for l in self.labels.all()],
-            'flagged': self.is_flagged,
-            'archived': self.is_archived,
-            'flow': self.type == self.TYPE_FLOW,
-            'case': self.case.as_json(full=False) if self.case else None
+            "id": self.backend_id,
+            "contact": self.contact.as_json(full=False),
+            "text": self.text,
+            "time": self.created_on,
+            "labels": [l.as_json(full=False) for l in self.labels.all()],
+            "flagged": self.is_flagged,
+            "archived": self.is_archived,
+            "flow": self.type == self.TYPE_FLOW,
+            "case": self.case.as_json(full=False) if self.case else None,
         }
 
     def __str__(self):
@@ -571,31 +646,36 @@ class MessageAction(models.Model):
     """
     An action performed on a set of messages
     """
-    FLAG = 'F'
-    UNFLAG = 'N'
-    LABEL = 'L'
-    UNLABEL = 'U'
-    ARCHIVE = 'A'
-    RESTORE = 'R'
 
-    ACTION_CHOICES = ((FLAG, _("Flag")),
-                      (UNFLAG, _("Un-flag")),
-                      (LABEL, _("Label")),
-                      (UNLABEL, _("Remove Label")),
-                      (ARCHIVE, _("Archive")),
-                      (RESTORE, _("Restore")))
+    FLAG = "F"
+    UNFLAG = "N"
+    LABEL = "L"
+    UNLABEL = "U"
+    ARCHIVE = "A"
+    RESTORE = "R"
 
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='message_actions')
+    ACTION_CHOICES = (
+        (FLAG, _("Flag")),
+        (UNFLAG, _("Un-flag")),
+        (LABEL, _("Label")),
+        (UNLABEL, _("Remove Label")),
+        (ARCHIVE, _("Archive")),
+        (RESTORE, _("Restore")),
+    )
 
-    messages = models.ManyToManyField(Message, related_name='actions')
+    org = models.ForeignKey(
+        Org, verbose_name=_("Organization"), related_name="message_actions", on_delete=models.PROTECT
+    )
+
+    messages = models.ManyToManyField(Message, related_name="actions")
 
     action = models.CharField(max_length=1, choices=ACTION_CHOICES)
 
-    created_by = models.ForeignKey(User, related_name="message_actions")
+    created_by = models.ForeignKey(User, related_name="message_actions", on_delete=models.PROTECT)
 
     created_on = models.DateTimeField(auto_now_add=True)
 
-    label = models.ForeignKey(Label, null=True)
+    label = models.ForeignKey(Label, null=True, on_delete=models.PROTECT)
 
     @classmethod
     def create(cls, org, user, messages, action, label=None):
@@ -605,31 +685,33 @@ class MessageAction(models.Model):
 
     def as_json(self):
         return {
-            'id': self.pk,
-            'action': self.action,
-            'created_by': self.created_by.as_json(full=False),
-            'created_on': self.created_on,
-            'label': self.label.as_json() if self.label else None
+            "id": self.pk,
+            "action": self.action,
+            "created_by": self.created_by.as_json(full=False),
+            "created_on": self.created_on,
+            "label": self.label.as_json() if self.label else None,
         }
 
 
-@python_2_unicode_compatible
 class Outgoing(models.Model):
     """
     An outgoing message (i.e. broadcast) sent by a user
     """
-    BULK_REPLY = 'B'
-    CASE_REPLY = 'C'
-    FORWARD = 'F'
+
+    BULK_REPLY = "B"
+    CASE_REPLY = "C"
+    FORWARD = "F"
 
     ACTIVITY_CHOICES = ((BULK_REPLY, _("Bulk Reply")), (CASE_REPLY, "Case Reply"), (FORWARD, _("Forward")))
     REPLY_ACTIVITIES = (BULK_REPLY, CASE_REPLY)
 
-    TIMELINE_TYPE = 'O'
+    TIMELINE_TYPE = "O"
 
-    org = models.ForeignKey(Org, verbose_name=_("Organization"), related_name='outgoing_messages')
+    org = models.ForeignKey(
+        Org, verbose_name=_("Organization"), related_name="outgoing_messages", on_delete=models.PROTECT
+    )
 
-    partner = models.ForeignKey('cases.Partner', null=True, related_name='outgoing_messages')
+    partner = models.ForeignKey("cases.Partner", null=True, related_name="outgoing_messages", on_delete=models.PROTECT)
 
     activity = models.CharField(max_length=1, choices=ACTIVITY_CHOICES)
 
@@ -637,15 +719,17 @@ class Outgoing(models.Model):
 
     backend_broadcast_id = models.IntegerField(null=True, help_text=_("Broadcast id from the backend"))
 
-    contact = models.ForeignKey(Contact, null=True, related_name='outgoing_messages')  # used for case and bulk replies
+    contact = models.ForeignKey(
+        Contact, null=True, related_name="outgoing_messages", on_delete=models.PROTECT
+    )  # used for case and bulk replies
 
     urn = models.CharField(max_length=255, null=True)  # used for forwards
 
-    reply_to = models.ForeignKey(Message, null=True, related_name='replies')
+    reply_to = models.ForeignKey(Message, null=True, related_name="replies", on_delete=models.PROTECT)
 
-    case = models.ForeignKey('cases.Case', null=True, related_name='outgoing_messages')
+    case = models.ForeignKey("cases.Case", null=True, related_name="outgoing_messages", on_delete=models.PROTECT)
 
-    created_by = models.ForeignKey(User, related_name='outgoing_messages')
+    created_by = models.ForeignKey(User, related_name="outgoing_messages", on_delete=models.PROTECT)
 
     created_on = models.DateTimeField(default=now)
 
@@ -660,14 +744,14 @@ class Outgoing(models.Model):
             replies.append(reply)
 
         # push together as a single broadcast
-        get_backend().push_outgoing(org, replies, as_broadcast=True)
+        org.get_backend().push_outgoing(org, replies, as_broadcast=True)
 
         return replies
 
     @classmethod
     def create_case_reply(cls, org, user, text, case):
         # will be a reply to the last message from the contact
-        last_incoming = case.incoming_messages.order_by('-created_on').first()
+        last_incoming = case.incoming_messages.order_by("-created_on").first()
 
         return cls._create(org, user, cls.CASE_REPLY, text, last_incoming, contact=case.contact, case=case)
 
@@ -678,7 +762,7 @@ class Outgoing(models.Model):
             forwards.append(cls._create(org, user, cls.FORWARD, text, original_message, urn=urn, push=False))
 
         # push together as a single broadcast
-        get_backend().push_outgoing(org, forwards, as_broadcast=True)
+        org.get_backend().push_outgoing(org, forwards, as_broadcast=True)
 
         return forwards
 
@@ -689,14 +773,20 @@ class Outgoing(models.Model):
         if not contact and not urn:  # pragma: no cover
             raise ValueError("Message must have a recipient")
 
-        msg = cls.objects.create(org=org, partner=user.get_partner(org),
-                                 activity=activity, text=text,
-                                 contact=contact, urn=urn,
-                                 reply_to=reply_to, case=case,
-                                 created_by=user)
+        msg = cls.objects.create(
+            org=org,
+            partner=user.get_partner(org),
+            activity=activity,
+            text=text,
+            contact=contact,
+            urn=urn,
+            reply_to=reply_to,
+            case=case,
+            created_by=user,
+        )
 
         if push:
-            get_backend().push_outgoing(org, [msg])
+            org.get_backend().push_outgoing(org, [msg])
 
         return msg
 
@@ -706,8 +796,8 @@ class Outgoing(models.Model):
 
     @classmethod
     def search(cls, org, user, search):
-        text = search.get('text')
-        contact_id = search.get('contact')
+        text = search.get("text")
+        contact_id = search.get("contact")
 
         queryset = org.outgoing_messages.all()
 
@@ -721,15 +811,15 @@ class Outgoing(models.Model):
         if contact_id:
             queryset = queryset.filter(contact__pk=contact_id)
 
-        queryset = queryset.prefetch_related('partner', 'contact', 'case__assignee', 'created_by__profile')
+        queryset = queryset.prefetch_related("partner", "contact", "case__assignee", "created_by__profile")
 
-        return queryset.order_by('-created_on')
+        return queryset.order_by("-created_on")
 
     @classmethod
     def search_replies(cls, org, user, search):
-        partner_id = search.get('partner')
-        after = search.get('after')
-        before = search.get('before')
+        partner_id = search.get("partner")
+        after = search.get("after")
+        before = search.get("before")
 
         queryset = cls.get_replies(org)
 
@@ -745,10 +835,10 @@ class Outgoing(models.Model):
         if before:
             queryset = queryset.filter(created_on__lte=before)
 
-        queryset = queryset.select_related('contact', 'case__assignee', 'created_by__profile')
-        queryset = queryset.prefetch_related('reply_to__labels')
+        queryset = queryset.select_related("contact", "case__assignee", "created_by__profile")
+        queryset = queryset.prefetch_related("reply_to__labels")
 
-        return queryset.order_by('-created_on')
+        return queryset.order_by("-created_on")
 
     def is_reply(self):
         return self.activity in self.REPLY_ACTIVITIES
@@ -768,13 +858,13 @@ class Outgoing(models.Model):
         Prepares this outgoing message for JSON serialization
         """
         return {
-            'id': self.pk,
-            'contact': self.contact.as_json(full=False) if self.contact else None,
-            'urn': self.urn,
-            'text': self.text,
-            'time': self.created_on,
-            'case': self.case.as_json(full=False) if self.case else None,
-            'sender': self.get_sender().as_json(full=False) if self.get_sender() else None
+            "id": self.pk,
+            "contact": self.contact.as_json(full=False) if self.contact else None,
+            "urn": self.urn,
+            "text": self.text,
+            "time": self.created_on,
+            "case": self.case.as_json(full=False) if self.case else None,
+            "sender": self.get_sender().as_json(full=False) if self.get_sender() else None,
         }
 
     def __str__(self):
@@ -785,12 +875,13 @@ class MessageExport(BaseSearchExport):
     """
     An export of messages
     """
-    directory = 'message_exports'
-    download_view = 'msgs.messageexport_read'
+
+    directory = "message_exports"
+    download_view = "msgs.messageexport_read"
 
     def get_search(self):
         search = super(MessageExport, self).get_search()
-        search['folder'] = MessageFolder[search['folder']]
+        search["folder"] = MessageFolder[search["folder"]]
         return search
 
     def render_search(self, book, search):
@@ -804,7 +895,7 @@ class MessageExport(BaseSearchExport):
         items = Message.search(self.org, self.created_by, search)
 
         def add_sheet(num):
-            sheet = book.add_sheet(six.text_type(_("Messages %d" % num)))
+            sheet = book.add_sheet(str(_("Messages %d" % num)))
             self.write_row(sheet, 0, all_fields)
             return sheet
 
@@ -821,9 +912,9 @@ class MessageExport(BaseSearchExport):
                 item.created_on,
                 item.backend_id,
                 item.is_flagged,
-                ', '.join([l.name for l in item.labels.all()]),
+                ", ".join([l.name for l in item.labels.all()]),
                 item.text,
-                item.contact.uuid
+                item.contact.uuid,
             ]
 
             fields = item.contact.get_fields()
@@ -838,12 +929,21 @@ class ReplyExport(BaseSearchExport):
     """
     An export of replies
     """
-    directory = 'reply_exports'
-    download_view = 'msgs.replyexport_read'
+
+    directory = "reply_exports"
+    download_view = "msgs.replyexport_read"
 
     def render_search(self, book, search):
         base_fields = [
-            "Sent On", "User", "Message", "Delay", "Reply to", "Flagged", "Case Assignee", "Labels", "Contact"
+            "Sent On",
+            "User",
+            "Message",
+            "Delay",
+            "Reply to",
+            "Flagged",
+            "Case Assignee",
+            "Labels",
+            "Contact",
         ]
         contact_fields = Field.get_all(self.org, visible=True)
         all_fields = base_fields + [f.label for f in contact_fields]
@@ -852,7 +952,7 @@ class ReplyExport(BaseSearchExport):
         items = Outgoing.search_replies(self.org, self.created_by, search)
 
         def add_sheet(num):
-            sheet = book.add_sheet(six.text_type(_("Replies %d" % num)))
+            sheet = book.add_sheet(str(_("Replies %d" % num)))
             self.write_row(sheet, 0, all_fields)
             return sheet
 
@@ -873,8 +973,8 @@ class ReplyExport(BaseSearchExport):
                 item.reply_to.text,
                 item.reply_to.is_flagged,
                 item.case.assignee.name if item.case else "",
-                ', '.join([l.name for l in item.reply_to.labels.all()]),
-                item.contact.uuid
+                ", ".join([l.name for l in item.reply_to.labels.all()]),
+                item.contact.uuid,
             ]
 
             fields = item.contact.get_fields()

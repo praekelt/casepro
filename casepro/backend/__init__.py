@@ -1,25 +1,4 @@
-from __future__ import unicode_literals
-
 from abc import ABCMeta, abstractmethod
-from django.conf import settings
-from pydoc import locate
-
-
-_ACTIVE_BACKEND = None
-
-
-def get_backend_class():
-    return locate(settings.SITE_BACKEND)
-
-
-def get_backend():
-    """
-    Gets the active backend for this casepro instance
-    """
-    global _ACTIVE_BACKEND
-    if not _ACTIVE_BACKEND:
-        _ACTIVE_BACKEND = get_backend_class()()
-    return _ACTIVE_BACKEND
 
 
 class BaseBackendException(Exception):
@@ -28,6 +7,9 @@ class BaseBackendException(Exception):
 
 class BaseBackend(object):
     __metaclass__ = ABCMeta
+
+    def __init__(self, backend):
+        self.backend = backend
 
     @abstractmethod
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
@@ -216,6 +198,24 @@ class BaseBackend(object):
         """
 
     @abstractmethod
+    def fetch_flows(self, org):
+        """
+        Fetches flows which can be used as a follow-up flow
+
+        :param org: the org
+        """
+
+    @abstractmethod
+    def start_flow(self, org, flow, contact, extra):
+        """
+        Starts the given contact in the given flow
+        :param org:
+        :param flow: the flow to start
+        :param contact: the contact to start
+        :param extra: extra parameters
+        """
+
+    @abstractmethod
     def get_url_patterns(self):
         """
         Returns the list of URL patterns that should be registered for this backend.
@@ -240,6 +240,7 @@ class NoopBackend(BaseBackend):  # pragma: no cover
     """
     A stub backend which doesn't do anything
     """
+
     NO_CHANGES = (0, 0, 0, 0)
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
@@ -258,6 +259,9 @@ class NoopBackend(BaseBackend):  # pragma: no cover
         return self.NO_CHANGES
 
     def fetch_contact_messages(self, org, contact, created_after, created_before):
+        return []
+
+    def fetch_flows(self, org):
         return []
 
     def get_url_patterns(self):
