@@ -26,6 +26,6 @@ COPY . /app
 RUN pip install -e . && \
     pip install -r pip-freeze.txt && \
     pip install -r pip-freeze-praekelt.txt && \
-    npm install -g less coffee-script && \
+    npm install -g less@3.0.4 coffee-script && \
     django-admin collectstatic --noinput &&\
     USE_DEFAULT_CACHE=True django-admin compress
