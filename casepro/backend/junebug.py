@@ -1,15 +1,10 @@
 import functools
 import random
 from datetime import datetime
-from itertools import chain
 import requests
-import pytz
-import six
 import logging
-
 import dateutil.parser
 import pytz
-import requests
 from dash.utils import is_dict_equal
 from dash.utils.sync import BaseSyncer, sync_local_to_changes
 from django.conf import settings
@@ -68,12 +63,12 @@ class HubMessageSender(object):
         if self.base_url and self.auth_token:
             json_data = self.build_outgoing_message_json(outgoing, to_addr)
             r = self.session.post(
-               '%s/jembi/helpdesk/outgoing/' % self.base_url,
-               json=json_data)
+                '%s/jembi/helpdesk/outgoing/' % self.base_url,
+                json=json_data)
             if not r.ok:
                 logger.error(
-                   "Submission to Hub unsuccessful. Code: %s Response: %s"
-                   % (r.status_code, r.text))
+                    "Submission to Hub unsuccessful. Code: %s Response: %s"
+                    % (r.status_code, r.text))
 
 
 class IdentityStore(object):
@@ -307,10 +302,10 @@ class JunebugBackend(BaseBackend):
             settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
         self.message_senders = dict([
             (channel_id, JunebugMessageSender(
-            channel_info['API_ROOT'],
-            channel_id,
-            channel_info['FROM_ADDRESS'],
-            self.identity_store))
+                channel_info['API_ROOT'],
+                channel_id,
+                channel_info['FROM_ADDRESS'],
+                self.identity_store))
             for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
 
     @classmethod
@@ -320,7 +315,6 @@ class JunebugBackend(BaseBackend):
                 raise JunebugBackendException(
                     'Bad Junebug Channel config, keys '
                     'API_ROOT and FROM_ADDRESS are required.')
-
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """

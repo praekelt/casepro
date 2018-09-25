@@ -743,19 +743,19 @@ class JunebugBackendTest(BaseCasesTest):
     )
     def test_outgoing_with_hub_push_failing(self):
         def message_send_callback(request):
-           data = json_decode(request.body)
-           self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
-           headers = {'Content-Type': "application/json"}
-           resp = {
-               'status': 200,
-               'code': "created",
-               'description': "message submitted",
-               'result': {
-                   'id': "message-uuid-1234",
-               },
-           }
-           return (200, headers, json.dumps(resp))
-           
+            data = json_decode(request.body)
+            self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
+            headers = {'Content-Type': "application/json"}
+            resp = {
+                'status': 200,
+                'code': "created",
+                'description': "message submitted",
+                'result': {
+                    'id': "message-uuid-1234",
+                },
+            }
+            return (200, headers, json.dumps(resp))
+
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
             self.assertEqual(data, {
@@ -1023,8 +1023,7 @@ class JunebugInboundViewTest(BaseCasesTest):
             content_type="application/json",
             data=json.dumps(
                 {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "+1234",
-                'channel_id': 'channel_id',
-            })
+                    'channel_id': 'channel_id', })
         )
         request.org = self.unicef
         response = received_junebug_message(request)
@@ -1054,8 +1053,7 @@ class JunebugInboundViewTest(BaseCasesTest):
             content_type="application/json",
             data=json.dumps(
                 {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "27741234567",
-                'channel_id': 'channel_id',
-                }
+                    'channel_id': 'channel_id', }
             )
         )
         request.org = self.unicef
@@ -1108,8 +1106,7 @@ class JunebugInboundViewTest(BaseCasesTest):
             content_type="application/json",
             data=json.dumps(
                 {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "+1234",
-                'channel_id': 'channel_id',
-                }
+                    'channel_id': 'channel_id', }
             )
         )
         request.org = self.unicef

@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 from abc import ABCMeta, abstractmethod
 from django.conf import settings
 from pydoc import locate
-from abc import ABCMeta, abstractmethod
-
 
 _ACTIVE_BACKEND = None
 
