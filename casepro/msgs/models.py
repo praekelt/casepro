@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.postgres.fields import HStoreField
 from django.core.exceptions import PermissionDenied
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 from django.db.models import Q
 from django.utils.timesince import timesince
 from django.utils.timezone import now
@@ -321,6 +322,8 @@ class Message(models.Model):
     )
 
     backend_id = models.IntegerField(unique=True, help_text=_("Backend identifier for this message"))
+
+    metadata = HStoreField(blank=True, null=True, default={}, help_text=_('Metadata for the received message.'))
 
     contact = models.ForeignKey(Contact, related_name="incoming_messages", on_delete=models.PROTECT)
 
