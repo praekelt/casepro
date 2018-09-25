@@ -61,12 +61,19 @@ class HubMessageSender(object):
             "label": label,
             "inbound_created_on": inbound_created_on.isoformat(),
             "outbound_created_on": outgoing.created_on.isoformat(),
+            'inbound_channel_id': inbound_channel_id,
         }
 
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):
         if self.base_url and self.auth_token:
             json_data = self.build_outgoing_message_json(outgoing, to_addr)
-            self.session.post("%s/jembi/helpdesk/outgoing/" % self.base_url, json=json_data)
+            r = self.session.post(
+               '%s/jembi/helpdesk/outgoing/' % self.base_url,
+               json=json_data)
+            if not r.ok:
+                logger.error(
+                   "Submission to Hub unsuccessful. Code: %s Response: %s"
+                   % (r.status_code, r.text))
 
 
 class IdentityStore(object):
@@ -168,6 +175,7 @@ class IdentityStoreContact(object):
         remote_language = json_data.get("details").get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition("_")
+            self.language = self.language[:3]
         self.name = json_data.get("details").get("name", None)
         self.fields = {}
         self.groups = {}

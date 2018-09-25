@@ -612,6 +612,7 @@ class JunebugBackendTest(BaseCasesTest):
                     "to": "+1234",
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
+                    'inbound_channel_id': '',
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -654,9 +655,15 @@ class JunebugBackendTest(BaseCasesTest):
 
     @responses.activate
     @override_settings(
-        JUNEBUG_FROM_ADDRESS="+4321",
-        JUNEBUG_HUB_BASE_URL="http://localhost:8082/api/v1",
-        JUNEBUG_HUB_AUTH_TOKEN="sample-token",
+        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
+        JUNEBUG_CHANNELS={
+            'replace-me': {
+                'API_ROOT': 'http://localhost:8080/',
+                'FROM_ADDRESS': '+4321',
+            }
+        },
+        JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
+        JUNEBUG_HUB_AUTH_TOKEN='sample-token'
     )
     def test_outgoing_with_hub_push_enabled_no_reply_to(self):
         def message_send_callback(request):
@@ -684,6 +691,7 @@ class JunebugBackendTest(BaseCasesTest):
                     "to": "+1234",
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
+                    "inbound_channel_id": ''
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -726,7 +734,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         },
