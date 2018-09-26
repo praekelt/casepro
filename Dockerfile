@@ -11,6 +11,9 @@ RUN mkdir -p /app/media
 RUN mkdir -p /etc/supervisor/conf.d/
 RUN mkdir -p /var/log/supervisor
 
+# startup.sh?
+RUN cd /casepro && npm install npm@latest && npm install && bower install --allow-root
+
 COPY docker/docker-start.sh /scripts/
 RUN chmod a+x /scripts/docker-start.sh
 
