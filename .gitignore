@@ -26,6 +26,7 @@ fabconfig.py
 casepro36/
 include/
 bin/
+local/
 
 # C extensions
 *.so
