@@ -1,18 +1,14 @@
-from __future__ import unicode_literals
-
 import json
-import responses
 import uuid
-import mock
-from base64 import b64decode
-
-import pytz
 from datetime import datetime
 
+import pytz
+import responses
 from django.conf import settings
 from django.db import IntegrityError
 from django.http import HttpResponse
 from django.test import override_settings, RequestFactory, tag
+from unittest import mock
 
 from casepro.contacts.models import Contact, Field, Group
 from casepro.msgs.models import Label, Message
@@ -20,8 +16,16 @@ from casepro.test import BaseCasesTest
 from casepro.utils import json_decode, uuid_to_int
 
 from ..junebug import (
-    IdentityStore, JunebugBackend, JunebugMessageSendingError, IdentityStoreContactSyncer, IdentityStoreContact,
-    received_junebug_message, token_auth_required, receive_identity_store_optout, JunebugBackendException)
+    IdentityStore,
+    IdentityStoreContact,
+    IdentityStoreContactSyncer,
+    JunebugBackend,
+    JunebugMessageSendingError,
+    receive_identity_store_optout,
+    received_junebug_message,
+    token_auth_required,
+    JunebugBackendException
+)
 
 
 @tag('junebug')
@@ -31,145 +35,127 @@ class JunebugBackendTest(BaseCasesTest):
         self.backend = JunebugBackend()
 
     def add_identity_store_callback(self, query, callback):
-        url = 'http://localhost:8081/api/v1/identities/?' + query
+        url = "http://localhost:8081/api/v1/identities/?" + query
         responses.add_callback(
-            responses.GET, url, callback=callback, match_querystring=True, content_type="application/json")
+            responses.GET, url, callback=callback, match_querystring=True, content_type="application/json"
+        )
 
     def add_identity_store_search_callback(self, query, callback):
-        url = 'http://localhost:8081/api/v1/identities/search/?' + query
+        url = "http://localhost:8081/api/v1/identities/search/?" + query
         responses.add_callback(
-            responses.GET, url, callback=callback, match_querystring=True, content_type="application/json")
+            responses.GET, url, callback=callback, match_querystring=True, content_type="application/json"
+        )
 
     def add_identity_store_create_callback(self, callback):
         responses.add_callback(
-            responses.POST, 'http://localhost:8081/api/v1/identities/', callback=callback,
-            content_type="application/json")
+            responses.POST,
+            "http://localhost:8081/api/v1/identities/",
+            callback=callback,
+            content_type="application/json",
+        )
 
     def add_hub_outgoing_callback(self, callback):
         responses.add_callback(
-            responses.POST, 'http://localhost:8082/api/v1/jembi/helpdesk/outgoing/', callback=callback,
-            content_type="application/json")
+            responses.POST,
+            "http://localhost:8082/api/v1/jembi/helpdesk/outgoing/",
+            callback=callback,
+            content_type="application/json",
+        )
 
     def identity_store_no_matches_callback(self, request):
-        headers = {'Content-Type': "application/json"}
-        resp = {
-            'count': 0,
-            'next': None,
-            'previous': None,
-            'results': []
-        }
+        headers = {"Content-Type": "application/json"}
+        resp = {"count": 0, "next": None, "previous": None, "results": []}
         return (201, headers, json.dumps(resp))
 
     def identity_store_created_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
+        headers = {"Content-Type": "application/json"}
         resp = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [
                 {
-                    'id': "test_id",
-                    'version': 1,
-                    'details': {
-                        'name': "test",
-                        'addresses': {
-                            'msisdn': {
-                                '+5678': {},
-                                '+1234': {'default': True}
-                            },
-                            'email': {
-                                'test1@example.com': {},
-                                'test2@example.com': {}
-                            }
+                    "id": "test_id",
+                    "version": 1,
+                    "details": {
+                        "name": "test",
+                        "addresses": {
+                            "msisdn": {"+5678": {}, "+1234": {"default": True}},
+                            "email": {"test1@example.com": {}, "test2@example.com": {}},
                         },
-                        'language': "eng_NG",
+                        "language": "eng_NG",
                     },
-                    'communicate_through': None,
-                    'operator': None,
-                    'created_at': "2016-03-14T10:21:00.258406Z",
-                    'created_by': 1,
-                    'updated_at': None,
-                    'updated_by': None
+                    "communicate_through": None,
+                    "operator": None,
+                    "created_at": "2016-03-14T10:21:00.258406Z",
+                    "created_by": 1,
+                    "updated_at": None,
+                    "updated_by": None,
                 }
-            ]
+            ],
         }
         return (201, headers, json.dumps(resp))
 
     def identity_store_created_new_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
+        headers = {"Content-Type": "application/json"}
         resp = {
-            'id': "test-uuid",
-            'version': 1,
-            'details': {
-                'name': "test",
-                'addresses': {
-                    'msisdn': {
-                        '+1234': {}
-                    },
-                },
-            },
-            'communicate_through': None,
-            'operator': None,
-            'created_at': "2016-03-14T10:21:00.258406Z",
-            'created_by': 1,
-            'updated_at': None,
-            'updated_by': None
+            "id": "test-uuid",
+            "version": 1,
+            "details": {"name": "test", "addresses": {"msisdn": {"+1234": {}}}},
+            "communicate_through": None,
+            "operator": None,
+            "created_at": "2016-03-14T10:21:00.258406Z",
+            "created_by": 1,
+            "updated_at": None,
+            "updated_by": None,
         }
         return (201, headers, json.dumps(resp))
 
     def identity_store_updated_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
+        headers = {"Content-Type": "application/json"}
         resp = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [
                 {
-                    'id': "test_id",
-                    'version': 1,
-                    'details': {
-                        'name': "test",
-                        'addresses': {
-                            'msisdn': {
-                                '+1234': {},
-                                '+5678': {'optedout': True}
-                            },
-                        },
-                        'language': "eng_NG",
+                    "id": "test_id",
+                    "version": 1,
+                    "details": {
+                        "name": "test",
+                        "addresses": {"msisdn": {"+1234": {}, "+5678": {"optedout": True}}},
+                        "language": "eng_NG",
                     },
-                    'communicate_through': None,
-                    'operator': None,
-                    'created_at': "2016-02-14T10:21:00.258406Z",
-                    'created_by': 1,
-                    'updated_at': "2016-03-14T10:21:00.258406Z",
-                    'updated_by': 1
+                    "communicate_through": None,
+                    "operator": None,
+                    "created_at": "2016-02-14T10:21:00.258406Z",
+                    "created_by": 1,
+                    "updated_at": "2016-03-14T10:21:00.258406Z",
+                    "updated_by": 1,
                 }
-            ]
+            ],
         }
         return (201, headers, json.dumps(resp))
 
     def identity_store_forgotten_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
+        headers = {"Content-Type": "application/json"}
         resp = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [
                 {
-                    'id': "test_id",
-                    'version': 1,
-                    'details': {
-                        'addresses': {},
-                        'language': "redacted",
-                    },
-                    'communicate_through': None,
-                    'operator': None,
-                    'created_at': "2016-02-14T10:21:00.258406Z",
-                    'created_by': 1,
-                    'updated_at': "2016-03-14T10:21:00.258406Z",
-                    'updated_by': 1
+                    "id": "test_id",
+                    "version": 1,
+                    "details": {"name": "redacted", "addresses": {}, "language": "redacted"},
+                    "communicate_through": None,
+                    "operator": None,
+                    "created_at": "2016-02-14T10:21:00.258406Z",
+                    "created_by": 1,
+                    "updated_at": "2016-03-14T10:21:00.258406Z",
+                    "updated_by": 1,
                 }
-            ]
+            ],
         }
         return (201, headers, json.dumps(resp))
 
@@ -202,16 +188,17 @@ class JunebugBackendTest(BaseCasesTest):
     def test_pull_contacts_recently_created(self):
         self.add_identity_store_callback(
             "created_to=2016-03-14T10%3A21%3A00&created_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_created_identity_callback
+            self.identity_store_created_identity_callback,
         )
 
         self.add_identity_store_callback(
             "updated_to=2016-03-14T10%3A21%3A00&updated_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_no_matches_callback
+            self.identity_store_no_matches_callback,
         )
 
         (created, updated, deleted, ignored) = self.backend.pull_contacts(
-            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00")
+            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00"
+        )
         self.assertEqual(created, 1)
         self.assertEqual(updated, 0)
         self.assertEqual(deleted, 0)
@@ -220,7 +207,9 @@ class JunebugBackendTest(BaseCasesTest):
         [contact] = Contact.objects.all()
         self.assertEqual(contact.uuid, "test_id")
         self.assertEqual(contact.name, "test")
-        self.assertSetEqual(set(contact.urns), set(["tel:+1234", "email:test1@example.com", "email:test2@example.com"]))
+        self.assertSetEqual(
+            set(contact.urns), set(["tel:+1234", "email:test1@example.com", "email:test2@example.com"])
+        )
 
     @responses.activate
     def test_pull_contacts_recently_updated(self):
@@ -230,16 +219,17 @@ class JunebugBackendTest(BaseCasesTest):
 
         self.add_identity_store_callback(
             "created_to=2016-03-14T10%3A21%3A00&created_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_no_matches_callback
+            self.identity_store_no_matches_callback,
         )
 
         self.add_identity_store_callback(
             "updated_to=2016-03-14T10%3A21%3A00&updated_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_updated_identity_callback
+            self.identity_store_updated_identity_callback,
         )
 
         (created, updated, deleted, ignored) = self.backend.pull_contacts(
-            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00")
+            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00"
+        )
         self.assertEqual(created, 0)
         self.assertEqual(updated, 1)
         self.assertEqual(deleted, 0)
@@ -254,16 +244,17 @@ class JunebugBackendTest(BaseCasesTest):
     def test_pull_contacts_forgotten(self):
         self.add_identity_store_callback(
             "created_to=2016-03-14T10%3A21%3A00&created_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_forgotten_identity_callback
+            self.identity_store_forgotten_identity_callback,
         )
 
         self.add_identity_store_callback(
             "updated_to=2016-03-14T10%3A21%3A00&updated_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_forgotten_identity_callback
+            self.identity_store_forgotten_identity_callback,
         )
 
         (created, updated, deleted, ignored) = self.backend.pull_contacts(
-            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00")
+            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00"
+        )
         self.assertEqual(created, 0)
         self.assertEqual(updated, 0)
         self.assertEqual(deleted, 0)
@@ -276,16 +267,17 @@ class JunebugBackendTest(BaseCasesTest):
 
         self.add_identity_store_callback(
             "created_to=2016-03-14T10%3A21%3A00&created_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_no_matches_callback
+            self.identity_store_no_matches_callback,
         )
 
         self.add_identity_store_callback(
             "updated_to=2016-03-14T10%3A21%3A00&updated_from=2016-03-14T10%3A25%3A00",
-            self.identity_store_updated_identity_callback
+            self.identity_store_updated_identity_callback,
         )
 
         (created, updated, deleted, ignored) = self.backend.pull_contacts(
-            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00")
+            self.unicef, "2016-03-14T10:25:00", "2016-03-14T10:21:00"
+        )
         self.assertEqual(created, 0)
         self.assertEqual(updated, 0)
         self.assertEqual(deleted, 0)
@@ -392,15 +384,14 @@ class JunebugBackendTest(BaseCasesTest):
         contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, urns=["tel:+1234"])
 
         self.add_identity_store_search_callback(
-            "details__addresses__msisdn=%2B1234",
-            self.identity_store_no_matches_callback
+            "details__addresses__msisdn=%2B1234", self.identity_store_no_matches_callback
         )
         self.add_identity_store_create_callback(self.identity_store_created_new_identity_callback)
 
         self.assertEqual(contact.uuid, None)
         self.backend.push_contact(self.unicef, contact)
         contact.refresh_from_db()
-        self.assertEqual(contact.uuid, 'test-uuid')
+        self.assertEqual(contact.uuid, "test-uuid")
 
     @responses.activate
     def test_push_contact_existing_contact(self):
@@ -411,8 +402,7 @@ class JunebugBackendTest(BaseCasesTest):
         contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name="test", urns=["tel:+1234"])
 
         self.add_identity_store_search_callback(
-            "details__addresses__msisdn=%2B1234",
-            self.identity_store_created_identity_callback
+            "details__addresses__msisdn=%2B1234", self.identity_store_created_identity_callback
         )
 
         self.assertEqual(contact.uuid, None)
@@ -421,7 +411,9 @@ class JunebugBackendTest(BaseCasesTest):
         self.assertEqual(contact.uuid, "test_id")
 
     def test_push_contact_with_existing_uuid(self):
-        contact = Contact.objects.create(org=self.unicef, uuid="test_id", is_stub=True, name="test", urns=["tel:+1234"])
+        contact = Contact.objects.create(
+            org=self.unicef, uuid="test_id", is_stub=True, name="test", urns=["tel:+1234"]
+        )
         old_contact = contact.__dict__.copy()
         self.backend.push_contact(self.unicef, contact)
         contact.refresh_from_db
@@ -429,40 +421,24 @@ class JunebugBackendTest(BaseCasesTest):
 
     def test_identity_equal_matching_contact(self):
         contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name="test", urns=["tel:+1234"])
-        identity = {
-            'details': {
-                'addresses': {'msisdn': {'+1234': {}}},
-                'name': 'test'
-            }}
+        identity = {"details": {"addresses": {"msisdn": {"+1234": {}}}, "name": "test"}}
         self.assertTrue(self.backend._identity_equal(identity, contact))
 
     def test_identity_equal_urns_diff(self):
         contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name="test", urns=["tel:+1234"])
-        identity = {
-            'details': {
-                'addresses': {'msisdn': {'+5678': {}}},
-                'name': 'test'
-            }}
+        identity = {"details": {"addresses": {"msisdn": {"+5678": {}}}, "name": "test"}}
         self.assertFalse(self.backend._identity_equal(identity, contact))
 
     def test_identity_equal_name_diff(self):
-        contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name='test', urns=["tel:+1234"])
-        identity = {
-            'details': {
-                'addresses': {'msisdn': {'+1234': {}}},
-                'name': 'exam'
-            }}
+        contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name="test", urns=["tel:+1234"])
+        identity = {"details": {"addresses": {"msisdn": {"+1234": {}}}, "name": "exam"}}
         self.assertFalse(self.backend._identity_equal(identity, contact))
 
     def test_identity_equal_lang_diff(self):
-        contact = Contact.objects.create(org=self.unicef, uuid=None, is_stub=True, name='test', language='eng',
-                                         urns=["tel:+1234"])
-        identity = {
-            'details': {
-                'addresses': {'msisdn': {'+1234': {}}},
-                'name': 'test',
-                'language': 'ibo_NG'
-            }}
+        contact = Contact.objects.create(
+            org=self.unicef, uuid=None, is_stub=True, name="test", language="eng", urns=["tel:+1234"]
+        )
+        identity = {"details": {"addresses": {"msisdn": {"+1234": {}}}, "name": "test", "language": "ibo_NG"}}
         self.assertFalse(self.backend._identity_equal(identity, contact))
 
     @responses.activate
@@ -475,20 +451,22 @@ class JunebugBackendTest(BaseCasesTest):
 
         def request_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': "+1234", 'from': None, 'content': "That's great"})
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(data, {"to": "+1234", "from": None, "content": "That's great"})
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'status': 201,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
-                },
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.POST, "http://localhost:8080/channels/replace-me/messages/", callback=request_callback,
-            content_type="application/json")
+            responses.POST,
+            "http://localhost:8080/channels/replace-me/messages/",
+            callback=request_callback,
+            content_type="application/json",
+        )
 
         self.backend.push_outgoing(self.unicef, [msg])
         self.assertEqual(len(responses.calls), 1)
@@ -504,56 +482,56 @@ class JunebugBackendTest(BaseCasesTest):
 
         def junebug_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': "+1234", 'from': None, 'content': "That's great"})
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(data, {"to": "+1234", "from": None, "content": "That's great"})
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'status': 201,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
-                },
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.POST, "http://localhost:8080/channels/replace-me/messages/", callback=junebug_callback,
-            content_type="application/json")
+            responses.POST,
+            "http://localhost:8080/channels/replace-me/messages/",
+            callback=junebug_callback,
+            content_type="application/json",
+        )
 
         def identity_address_callback(request):
-            headers = {'Content-Type': "application/json"}
-            resp = {
-                'count': 1,
-                'next': None,
-                'previous': None,
-                'results': [
-                    {
-                        'address': "+1234",
-                    }
-                ]
-            }
+            headers = {"Content-Type": "application/json"}
+            resp = {"count": 1, "next": None, "previous": None, "results": [{"address": "+1234"}]}
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
-            callback=identity_address_callback, content_type="application/json")
+            responses.GET,
+            "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
+            callback=identity_address_callback,
+            content_type="application/json",
+        )
 
         def identity_callback(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'id': bob.uuid,
-                'version': 1,
-                'details': {
-                },
-                'communicate_through': None,
-                'operator': None,
-                'created_at': "2016-06-23T13:03:18.674016Z",
-                'created_by': 1,
-                'updated_at': "2016-06-23T13:03:18.674043Z",
-                'updated_by': 1
+                "id": bob.uuid,
+                "version": 1,
+                "details": {},
+                "communicate_through": None,
+                "operator": None,
+                "created_at": "2016-06-23T13:03:18.674016Z",
+                "created_by": 1,
+                "updated_at": "2016-06-23T13:03:18.674043Z",
+                "updated_by": 1,
             }
             return 200, headers, json.dumps(resp)
+
         responses.add_callback(
-            responses.GET, "http://localhost:8081/api/v1/identities/%s/" % bob.uuid, callback=identity_callback,
-            content_type="application/json")
+            responses.GET,
+            "http://localhost:8081/api/v1/identities/%s/" % bob.uuid,
+            callback=identity_callback,
+            content_type="application/json",
+        )
 
         self.backend.push_outgoing(self.unicef, [msg])
         self.assertEqual(len(responses.calls), 3)
@@ -563,7 +541,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -576,20 +554,22 @@ class JunebugBackendTest(BaseCasesTest):
 
         def request_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(data, {"to": "+1234", "from": "+4321", "content": "That's great"})
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'status': 201,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
-                },
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.POST, "http://localhost:8080/channels/replace-me/messages/", callback=request_callback,
-            content_type="application/json")
+            responses.POST,
+            "http://localhost:8080/channels/replace-me/messages/",
+            callback=request_callback,
+            content_type="application/json",
+        )
 
         self.backend.push_outgoing(self.unicef, [msg])
         self.assertEqual(len(responses.calls), 1)
@@ -599,61 +579,76 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         },
         JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
-        JUNEBUG_HUB_AUTH_TOKEN='sample-token')
+        JUNEBUG_HUB_AUTH_TOKEN="sample-token",
+    )
     def test_outgoing_with_hub_push_enabled(self):
         def message_send_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(data, {"to": "+1234", "from": "+4321", "content": "That's great"})
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'status': 200,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
-                },
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (200, headers, json.dumps(resp))
 
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {
-                'content': "That's great", 'inbound_created_on': '2016-11-16T10:30:00+00:00',
-                'outbound_created_on': '2016-11-17T10:30:00+00:00',
-                'label': 'AIDS', 'reply_to': 'Hello', 'to': '+1234', 'user_id': 'C-002',
-                'helpdesk_operator_id': self.user1.id,
-                'inbound_channel_id': '66412231-4a4c-45d8-bbe1-95676ec3c5b7'})
-            headers = {'Content-Type': "application/json"}
-            resp = {
-                'status': 200,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
+            self.assertEqual(
+                data,
+                {
+                    "content": "That's great",
+                    "inbound_created_on": "2016-11-16T10:30:00+00:00",
+                    "outbound_created_on": "2016-11-17T10:30:00+00:00",
+                    "label": "AIDS",
+                    "reply_to": "Hello",
+                    "to": "+1234",
+                    "user_id": "C-002",
+                    "helpdesk_operator_id": self.user1.id,
+                    'inbound_channel_id': '',
                 },
+            )
+            headers = {"Content-Type": "application/json"}
+            resp = {
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (200, headers, json.dumps(resp))
 
         responses.add_callback(
-            responses.POST, "http://localhost:8080/channels/replace-me/messages/",
+            responses.POST,
+            "http://localhost:8080/channels/replace-me/messages/",
             callback=message_send_callback,
-            content_type="application/json")
+            content_type="application/json",
+        )
         self.add_hub_outgoing_callback(hub_outgoing_callback)
 
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         msg = self.create_message(
-            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc),
-            metadata={"channel_id": "66412231-4a4c-45d8-bbe1-95676ec3c5b7"})
-        msg.labels.add(self.aids)
+            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc)
+        )
+        msg.label(self.aids)
         self.backend = JunebugBackend()
         out_msg = self.create_outgoing(
-            self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234",
-            reply_to=msg, created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc))
+            self.unicef,
+            self.user1,
+            None,
+            "B",
+            "That's great",
+            bob,
+            urn="tel:+1234",
+            reply_to=msg,
+            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc),
+        )
 
         self.backend.push_outgoing(self.unicef, [out_msg])
         self.assertEqual(len(responses.calls), 2)
@@ -663,49 +658,57 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         },
         JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
-        JUNEBUG_HUB_AUTH_TOKEN='sample-token')
+        JUNEBUG_HUB_AUTH_TOKEN='sample-token'
+    )
     def test_outgoing_with_hub_push_enabled_no_reply_to(self):
         def message_send_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': "+1234", 'from': "+4321", 'content': "That's great"})
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(data, {"to": "+1234", "from": "+4321", "content": "That's great"})
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'status': 200,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
-                },
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
-            return (200, headers, json.dumps(resp))
+            return (201, headers, json.dumps(resp))
 
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {
-                'content': "That's great", 'inbound_created_on': '2016-11-17T10:30:00+00:00',
-                'outbound_created_on': '2016-11-17T10:30:00+00:00',
-                'label': '', 'reply_to': '', 'to': '+1234', 'user_id': 'C-002', 'helpdesk_operator_id': self.user1.id,
-                'inbound_channel_id': ''})
-            headers = {'Content-Type': "application/json"}
-            resp = {
-                'status': 200,
-                'code': "created",
-                'description': "message submitted",
-                'result': {
-                    'id': "message-uuid-1234",
+            self.assertEqual(
+                data,
+                {
+                    "content": "That's great",
+                    "inbound_created_on": "2016-11-17T10:30:00+00:00",
+                    "outbound_created_on": "2016-11-17T10:30:00+00:00",
+                    "label": "",
+                    "reply_to": "",
+                    "to": "+1234",
+                    "user_id": "C-002",
+                    "helpdesk_operator_id": self.user1.id,
+                    "inbound_channel_id": ''
                 },
+            )
+            headers = {"Content-Type": "application/json"}
+            resp = {
+                "status": 201,
+                "code": "created",
+                "description": "message submitted",
+                "result": {"id": "message-uuid-1234"},
             }
             return (200, headers, json.dumps(resp))
 
         responses.add_callback(
-            responses.POST, "http://localhost:8080/channels/replace-me/messages/",
+            responses.POST,
+            "http://localhost:8080/channels/replace-me/messages/",
             callback=message_send_callback,
-            content_type="application/json")
+            content_type="application/json",
+        )
         self.add_hub_outgoing_callback(hub_outgoing_callback)
 
         bob = self.create_contact(self.unicef, "C-002", "Bob")
@@ -713,8 +716,15 @@ class JunebugBackendTest(BaseCasesTest):
         # for messages created manually, there is not "reply-to"
         self.backend = JunebugBackend()
         out_msg = self.create_outgoing(
-            self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234",
-            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc))
+            self.unicef,
+            self.user1,
+            None,
+            "B",
+            "That's great",
+            bob,
+            urn="tel:+1234",
+            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc),
+        )
 
         self.backend.push_outgoing(self.unicef, [out_msg])
         self.assertEqual(len(responses.calls), 2)
@@ -724,12 +734,13 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         },
         JUNEBUG_HUB_BASE_URL='http://localhost:8082/api/v1',
-        JUNEBUG_HUB_AUTH_TOKEN='sample-token')
+        JUNEBUG_HUB_AUTH_TOKEN='sample-token'
+    )
     def test_outgoing_with_hub_push_failing(self):
         def message_send_callback(request):
             data = json_decode(request.body)
@@ -849,7 +860,7 @@ class JunebugBackendTest(BaseCasesTest):
         """
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         msg = self.create_message(self.unicef, 123, bob, "Hello")
-        msg.labels.add(self.aids)
+        msg.label(self.aids)
         self.backend.unlabel_messages(self.unicef, [msg], self.aids)
 
         msg.refresh_from_db()
@@ -925,26 +936,27 @@ class JunebugBackendTest(BaseCasesTest):
         """
         urls = self.backend.get_url_patterns()
         self.assertEqual(urls[0].callback, received_junebug_message)
-        self.assertEqual(urls[0].regex.pattern, settings.JUNEBUG_INBOUND_URL)
+        self.assertEqual(str(urls[0].pattern), settings.JUNEBUG_INBOUND_URL)
         self.assertEqual(urls[0].name, "inbound_junebug_message")
         self.assertEqual(urls[1].callback, receive_identity_store_optout)
-        self.assertEqual(urls[1].regex.pattern, settings.IDENTITY_STORE_OPTOUT_URL)
+        self.assertEqual(str(urls[1].pattern), settings.IDENTITY_STORE_OPTOUT_URL)
         self.assertEqual(urls[1].name, "identity_store_optout")
 
-        with self.settings(JUNEBUG_INBOUND_URL=r'^test/url/$'):
+        with self.settings(JUNEBUG_INBOUND_URL=r"^test/url/$"):
             urls = self.backend.get_url_patterns()
-            self.assertEqual(urls[0].regex.pattern, r'^test/url/$')
+            self.assertEqual(str(urls[0].pattern), r"^test/url/$")
 
-        with self.settings(IDENTITY_STORE_OPTOUT_URL=r'^test/url/$'):
+        with self.settings(IDENTITY_STORE_OPTOUT_URL=r"^test/url/$"):
             urls = self.backend.get_url_patterns()
-            self.assertEqual(urls[1].regex.pattern, r'^test/url/$')
+            self.assertEqual(str(urls[1].pattern), r"^test/url/$")
 
 
 class JunebugInboundViewTest(BaseCasesTest):
     """
     Tests related to the inbound junebug messages view.
     """
-    url = '/junebug/inbound/'
+
+    url = "/junebug/inbound/"
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -956,52 +968,39 @@ class JunebugInboundViewTest(BaseCasesTest):
         """
         request = self.factory.get(self.url)
         response = received_junebug_message(request)
-        self.assertEqual(json_decode(response.content), {'reason': "Method not allowed."})
+        self.assertEqual(json_decode(response.content), {"reason": "Method not allowed."})
         self.assertEqual(response.status_code, 405)
 
     def test_invalid_json_body(self):
         """
         If the request contains invalid JSON in the body, an appropriate error message and code should be returned.
         """
-        request = self.factory.post(self.url, content_type='application/json', data="{")
+        request = self.factory.post(self.url, content_type="application/json", data="{")
         response = received_junebug_message(request)
         self.assertEqual(response.status_code, 400)
 
         content = json_decode(response.content)
-        self.assertEqual(content['reason'], "JSON decode error")
-        self.assertTrue(content['details'])
+        self.assertEqual(content["reason"], "JSON decode error")
+        self.assertTrue(content["details"])
 
     def create_identity_obj(self, **kwargs):
         defaults = {
-            'id': "50d62fcf-856a-489c-914a-56f6e9506ee3",
-            'version': 1,
-            'details': {
-                'addresses': {
-                    'msisdn': {
-                        '+1234': {}
-                    }
-                }
-            },
-            'communicate_through': None,
-            'operator': None,
-            'created_at': "2016-06-23T13:15:55.580070Z",
-            'created_by': 1,
-            'updated_at': "2016-06-23T13:15:55.580099Z",
-            'updated_by': 1
+            "id": "50d62fcf-856a-489c-914a-56f6e9506ee3",
+            "version": 1,
+            "details": {"addresses": {"msisdn": {"+1234": {}}}},
+            "communicate_through": None,
+            "operator": None,
+            "created_at": "2016-06-23T13:15:55.580070Z",
+            "created_by": 1,
+            "updated_at": "2016-06-23T13:15:55.580099Z",
+            "updated_by": 1,
         }
         defaults.update(kwargs)
         return defaults
 
     def single_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
-        data = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
-                self.create_identity_obj(),
-            ]
-        }
+        headers = {"Content-Type": "application/json"}
+        data = {"count": 1, "next": None, "previous": None, "results": [self.create_identity_obj()]}
         return (200, headers, json.dumps(data))
 
     @responses.activate
@@ -1012,22 +1011,25 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
-                'content': "test message",
-                'from': "+1234",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "+1234",
+                    'channel_id': 'channel_id', })
         )
         request.org = self.unicef
         response = received_junebug_message(request)
         resp_data = json_decode(response.content)
 
-        message = Message.objects.get(backend_id=resp_data['id'])
+        message = Message.objects.get(backend_id=resp_data["id"])
         self.assertEqual(message.text, "test message")
         self.assertEqual(message.contact.uuid, "50d62fcf-856a-489c-914a-56f6e9506ee3")
 
@@ -1039,48 +1041,41 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B27741234567"
         url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
-                'content': "test message",
-                'from': "27741234567",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "27741234567",
+                    'channel_id': 'channel_id', }
+            )
         )
         request.org = self.unicef
         response = received_junebug_message(request)
         resp_data = json_decode(response.content)
 
-        message = Message.objects.get(backend_id=resp_data['id'])
+        message = Message.objects.get(backend_id=resp_data["id"])
         self.assertEqual(message.text, "test message")
         self.assertEqual(message.contact.uuid, "50d62fcf-856a-489c-914a-56f6e9506ee3")
 
     def create_identity_callback(self, request):
         data = json_decode(request.body)
-        self.assertEqual(data.get('details'), {
-            'addresses': {
-                'msisdn': {
-                    '+1234': {},
-                },
-            },
-            'default_addr_type': "msisdn",
-            'name': None,
-            'language': None,
-        })
-        headers = {'Content-Type': "application/json"}
+        self.assertEqual(
+            data.get("details"),
+            {"addresses": {"msisdn": {"+1234": {}}}, "default_addr_type": "msisdn", "name": None, "language": None},
+        )
+        headers = {"Content-Type": "application/json"}
         return (201, headers, json.dumps(self.create_identity_obj()))
 
     def no_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
-        data = {
-            'count': 0,
-            'next': None,
-            'previous': None,
-            'results': []
-        }
+        headers = {"Content-Type": "application/json"}
+        data = {"count": 0, "next": None, "previous": None, "results": []}
         return (200, headers, json.dumps(data))
 
     @responses.activate
@@ -1091,20 +1086,28 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         get_url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, get_url + query, callback=self.no_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            get_url + query,
+            callback=self.no_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
         create_url = "%sapi/v1/identities/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.POST, create_url, callback=self.create_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.POST,
+            create_url,
+            callback=self.create_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
-                'content': "test message",
-                'from': "+1234",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {"message_id": "35f3336d4a1a46c7b40cd172a41c510d", "content": "test message", "from": "+1234",
+                    'channel_id': 'channel_id', }
+            )
         )
         request.org = self.unicef
         received_junebug_message(request)
@@ -1121,23 +1124,31 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': "35f3336d4a1a46c7b40cd172a41c510d",
-                'content': "test message",
-                'from': "+1234",
-                'timestamp': "2016.11.21 07:30:05.123456",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {
+                    "message_id": "35f3336d4a1a46c7b40cd172a41c510d",
+                    "content": "test message",
+                    "from": "+1234",
+                    "timestamp": "2016.11.21 07:30:05.123456",
+                    'channel_id': 'channel_id',
+                }
+            )
         )
         request.org = self.unicef
         response = received_junebug_message(request)
         resp_data = json_decode(response.content)
 
-        message = Message.objects.get(backend_id=resp_data['id'])
+        message = Message.objects.get(backend_id=resp_data["id"])
         self.assertEqual(message.text, "test message")
         self.assertEqual(message.contact.uuid, "50d62fcf-856a-489c-914a-56f6e9506ee3")
         self.assertEqual(message.created_on, datetime(2016, 11, 21, 7, 30, 5, 123456, pytz.utc))
@@ -1150,28 +1161,42 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         msg_id = str(uuid.uuid4())
-        contact = Contact.get_or_create(self.unicef, self.create_identity_obj()['id'])
+        contact = Contact.get_or_create(self.unicef, self.create_identity_obj()["id"])
         msg = Message.objects.create(
-            org=self.unicef, backend_id=uuid_to_int(msg_id), contact=contact, type=Message.TYPE_INBOX,
-            text="collision message", created_on=datetime.utcnow().replace(tzinfo=pytz.utc), has_labels=True)
+            org=self.unicef,
+            backend_id=uuid_to_int(msg_id),
+            contact=contact,
+            type=Message.TYPE_INBOX,
+            text="collision message",
+            created_on=datetime.utcnow().replace(tzinfo=pytz.utc),
+            has_labels=True,
+        )
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': msg_id,
-                'content': "test message",
-                'from': "+1234",
-                'timestamp': "2016.11.21 07:30:05.123456",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {
+                    "message_id": msg_id,
+                    "content": "test message",
+                    "from": "+1234",
+                    "timestamp": "2016.11.21 07:30:05.123456",
+                    'channel_id': 'channel_id',
+                }
+            )
         )
         request.org = self.unicef
         response = received_junebug_message(request)
         resp_data = json_decode(response.content)
-        self.assertNotEqual(resp_data['id'], msg.id)
+        self.assertNotEqual(resp_data["id"], msg.id)
 
     @responses.activate
     def test_inbound_sets_metadata(self):
@@ -1201,18 +1226,10 @@ class JunebugInboundViewTest(BaseCasesTest):
             'backend': 'casepro.backend.junebug.JunebugBackend',
         })
 
-    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234', reply_to=None):
+    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234'):
         def junebug_callback(request):
             data = json_decode(request.body)
-            expected_data = {
-                'to': to_addr,
-                'from': from_addr,
-                'content': content,
-            }
-            if reply_to is not None:
-                expected_data['reply_to'] = reply_to
-
-            self.assertEqual(data, expected_data)
+            self.assertEqual(data, {'to': to_addr, 'from': from_addr, 'content': content})
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
@@ -1233,7 +1250,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://localhost:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1262,11 +1279,11 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://bad.example.org:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://bad.example.org:8080/',
                 'FROM_ADDRESS': '+4321',
             },
             'junebug-channel-id': {
-                'API_URL': 'http://good.example.org:8080/channels/junebug-channel-id/messages/',
+                'API_ROOT': 'http://good.example.org:8080/',
                 'FROM_ADDRESS': '+6789',
             }
         })
@@ -1274,13 +1291,12 @@ class JunebugInboundViewTest(BaseCasesTest):
         bob = self.create_contact(self.unicef, "C-002", "Bob")
         message = self.create_message(self.unicef, 1000, bob, 'Is this great?', metadata={
             'channel_id': 'junebug-channel-id',
-            'message_id': 'junebug-message-id',
         })
         outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, reply_to=message)
 
         self.assertJunebugMessageSent(
             "http://good.example.org:8080/channels/junebug-channel-id/messages/",
-            to_addr='+1234', from_addr='+6789', content="That's great", reply_to='junebug-message-id')
+            to_addr='+1234', from_addr='+6789', content="That's great")
 
         responses.add(
             responses.GET, "http://localhost:8081/api/v1/identities/%s/addresses/msisdn" % (bob.uuid),
@@ -1319,36 +1335,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://username:password@auth.example.org:8080/channels/replace-me/messages/',
-                'FROM_ADDRESS': '+4321',
-            },
-        })
-    def test_http_basic_auth(self):
-        """
-        Sending outgoing messages with a specified urn should send via Junebug with that URN.
-        """
-        bob = self.create_contact(self.unicef, "C-002", "Bob")
-        msg = self.create_outgoing(self.unicef, self.user1, None, "B", "That's great", bob, urn="tel:+1234")
-
-        def request_callback(request):
-            strategy, _, auth = request.headers['Authorization'].partition(' ')
-            self.assertEqual(strategy, 'Basic')
-            self.assertEqual(b64decode(auth), b'username:password')
-            return (201, {}, json.dumps({}))
-        responses.add_callback(
-            responses.POST, "http://auth.example.org:8080/channels/replace-me/messages/", callback=request_callback,
-            content_type="application/json")
-
-        backend = JunebugBackend()
-        backend.push_outgoing(self.unicef, [msg])
-        self.assertEqual(len(responses.calls), 1)
-
-    @responses.activate
-    @override_settings(
-        JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
-        JUNEBUG_CHANNELS={
-            'replace-me': {
-                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://default.example.org:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1401,7 +1388,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
+                'API_ROOT': 'http://default.example.org:8080/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1448,7 +1435,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         self.backend.push_outgoing(self.unicef, [outgoing])
         self.assertEqual(len(responses.calls), 3)
 
-    @mock.patch('casepro.backend.junebug.random')
+    @mock.patch("casepro.backend.junebug.random")
     @responses.activate
     def test_inbound_message_id_unavoidable_collision(self, random_mock):
         """
@@ -1458,26 +1445,40 @@ class JunebugInboundViewTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         url = "%sapi/v1/identities/search/" % settings.IDENTITY_API_ROOT
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         msg_id = str(uuid.uuid4())
-        contact = Contact.get_or_create(self.unicef, self.create_identity_obj()['id'])
+        contact = Contact.get_or_create(self.unicef, self.create_identity_obj()["id"])
         Message.objects.create(
-            org=self.unicef, backend_id=uuid_to_int(msg_id), contact=contact, type=Message.TYPE_INBOX,
-            text="collision message", created_on=datetime.utcnow().replace(tzinfo=pytz.utc), has_labels=True)
+            org=self.unicef,
+            backend_id=uuid_to_int(msg_id),
+            contact=contact,
+            type=Message.TYPE_INBOX,
+            text="collision message",
+            created_on=datetime.utcnow().replace(tzinfo=pytz.utc),
+            has_labels=True,
+        )
 
         # Mock random so that it always returns the same value
         random_mock.randint.return_value = uuid_to_int(msg_id)
 
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'message_id': msg_id,
-                'content': "test message",
-                'from': "+1234",
-                'timestamp': "2016.11.21 07:30:05.123456",
-                'channel_id': 'channel_id',
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {
+                    "message_id": msg_id,
+                    "content": "test message",
+                    "from": "+1234",
+                    "timestamp": "2016.11.21 07:30:05.123456",
+                    'channel_id': 'channel_id',
+                }
+            )
         )
         request.org = self.unicef
         self.assertRaises(IntegrityError, received_junebug_message, request)
@@ -1487,7 +1488,8 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
     """
     Tests related to the optout identity store view.
     """
-    url = '/junebug/optout/'
+
+    url = "/junebug/optout/"
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -1499,9 +1501,9 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
         """
         request = self.factory.get(self.url)
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
-        self.assertEqual(json_decode(response.content), {'reason': "Method not allowed."})
+        self.assertEqual(json_decode(response.content), {"reason": "Method not allowed."})
         self.assertEqual(response.status_code, 405)
 
     def test_invalid_json_body(self):
@@ -1510,30 +1512,26 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
         """
         request = self.factory.post(self.url, content_type="application/json", data="{")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
 
         self.assertEqual(response.status_code, 400)
 
         content = json_decode(response.content)
-        self.assertEqual(content['reason'], "JSON decode error")
-        self.assertTrue(content['details'])
+        self.assertEqual(content["reason"], "JSON decode error")
+        self.assertTrue(content["details"])
 
     def get_optout_request(self, identity, optout_type):
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'identity': identity,
-                'details': {
-                    'name': "testing",
-                    'addresses': {
-                        'msisdn': {
-                            '+1234': {}
-                        },
-                    },
-                    'language': "eng_NG",
-                },
-                'optout_type': optout_type,
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {
+                    "identity": identity,
+                    "details": {"name": "testing", "addresses": {"msisdn": {"+1234": {}}}, "language": "eng_NG"},
+                    "optout_type": optout_type,
+                }
+            ),
         )
         request.org = self.unicef
         return request
@@ -1543,19 +1541,21 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
         """
         Forget optouts should unset the contact's is_active flag
         """
-        contact = Contact.objects.create(org=self.unicef, uuid="test_id", name="test", language="eng",
-                                         urns=["tel:+1234"])
+        contact = Contact.objects.create(
+            org=self.unicef, uuid="test_id", name="test", language="eng", urns=["tel:+1234"]
+        )
 
         msg_in = self.create_message(self.unicef, 101, contact, "Normal", [self.aids, self.pregnancy, self.tea])
         outgoing = self.create_outgoing(self.unicef, self.user1, None, "B", "Outgoing msg", contact, urn="tel:+1234")
-        reply = self.create_outgoing(self.unicef, self.user1, None, "B", "Outgoing reply", None, urn="tel:+1234",
-                                     reply_to=msg_in)
+        reply = self.create_outgoing(
+            self.unicef, self.user1, None, "B", "Outgoing reply", None, urn="tel:+1234", reply_to=msg_in
+        )
 
         self.assertTrue(contact.is_active)
 
         request = self.get_optout_request(contact.uuid, "forget")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
         self.assertEqual(json_decode(response.content), {"success": True})
 
@@ -1565,15 +1565,15 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
         self.assertEqual(contact.urns, [])
 
         msg_in.refresh_from_db()
-        self.assertEqual(msg_in.text, '<redacted>')
+        self.assertEqual(msg_in.text, "<redacted>")
 
         outgoing.refresh_from_db()
-        self.assertEqual(outgoing.text, '<redacted>')
-        self.assertEqual(outgoing.urn, '<redacted>')
+        self.assertEqual(outgoing.text, "<redacted>")
+        self.assertEqual(outgoing.urn, "<redacted>")
 
         reply.refresh_from_db()
-        self.assertEqual(reply.text, '<redacted>')
-        self.assertEqual(reply.urn, '<redacted>')
+        self.assertEqual(reply.text, "<redacted>")
+        self.assertEqual(reply.urn, "<redacted>")
 
     @responses.activate
     def test_stop_optout_received(self):
@@ -1585,7 +1585,7 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
 
         request = self.get_optout_request(contact.uuid, "stop")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
         self.assertEqual(json_decode(response.content), {"success": True})
 
@@ -1602,7 +1602,7 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
 
         request = self.get_optout_request(original_contact.uuid, "unsubscribe")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
         self.assertEqual(json_decode(response.content), {"success": True})
 
@@ -1620,11 +1620,11 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
 
         request = self.get_optout_request(original_contact.uuid, "unrecognised")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
         self.assertEqual(
-            json_decode(response.content),
-            {'reason': 'Unrecognised value for "optout_type": unrecognised'})
+            json_decode(response.content), {"reason": 'Unrecognised value for "optout_type": unrecognised'}
+        )
         self.assertEqual(response.status_code, 400)
 
     @responses.activate
@@ -1636,9 +1636,9 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
 
         request = self.get_optout_request("tester", "forget")
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
-        self.assertEqual(json_decode(response.content), {'reason': "No Contact for id: tester"})
+        self.assertEqual(json_decode(response.content), {"reason": "No Contact for id: tester"})
         self.assertEqual(response.status_code, 400)
 
     @responses.activate
@@ -1647,29 +1647,23 @@ class IdentityStoreOptoutViewTest(BaseCasesTest):
         Optouts received with fields missing should return an error
         """
         request = self.factory.post(
-            self.url, content_type="application/json", data=json.dumps({
-                'details': {
-                    'name': "testing",
-                    'addresses': {
-                        'msisdn': {
-                            '+1234': {}
-                        },
-                    },
-                    'language': "eng_NG",
-                },
-            })
+            self.url,
+            content_type="application/json",
+            data=json.dumps(
+                {"details": {"name": "testing", "addresses": {"msisdn": {"+1234": {}}}, "language": "eng_NG"}}
+            ),
         )
         with self.settings(IDENTITY_AUTH_TOKEN="test_token"):
-            request.META['HTTP_AUTHORIZATION'] = "Token " + settings.IDENTITY_AUTH_TOKEN
+            request.META["HTTP_AUTHORIZATION"] = "Token " + settings.IDENTITY_AUTH_TOKEN
             response = receive_identity_store_optout(request)
         self.assertEqual(
-            json_decode(response.content),
-            {'reason': 'Both "identity" and "optout_type" must be specified.'})
+            json_decode(response.content), {"reason": 'Both "identity" and "optout_type" must be specified.'}
+        )
         self.assertEqual(response.status_code, 400)
 
 
 class TokenAuthRequiredTest(BaseCasesTest):
-    url = '/junebug/optout/'
+    url = "/junebug/optout/"
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -1682,28 +1676,27 @@ class TokenAuthRequiredTest(BaseCasesTest):
         return "test_token"
 
     def test_no_auth_header(self):
-        '''Tests that an authentication header is required'''
+        """Tests that an authentication header is required"""
         request = self.factory.get("url")
         func = token_auth_required(self.dummy_auth_token)(self.dummy_view)
         response = func(request)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(json_decode(response.content),
-                         {"reason": "Authentication required"})
-        self.assertEqual(response['WWW-Authenticate'], "Token")
+        self.assertEqual(json_decode(response.content), {"reason": "Authentication required"})
+        self.assertEqual(response["WWW-Authenticate"], "Token")
 
     def test_wrong_auth_token(self):
-        '''Tests that the decorator restricts access with an incorrect token'''
+        """Tests that the decorator restricts access with an incorrect token"""
         request = self.factory.get("url")
-        request.META['HTTP_AUTHORIZATION'] = "Token tests"
+        request.META["HTTP_AUTHORIZATION"] = "Token tests"
         func = token_auth_required(self.dummy_auth_token)(self.dummy_view)
         response = func(request)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(json_decode(response.content), {"reason": "Forbidden"})
 
     def test_correct_token(self):
-        '''Tests that the decorator allows correct requests'''
+        """Tests that the decorator allows correct requests"""
         request = self.factory.get("url")
-        request.META['HTTP_AUTHORIZATION'] = "Token " + self.dummy_auth_token()
+        request.META["HTTP_AUTHORIZATION"] = "Token " + self.dummy_auth_token()
         func = token_auth_required(self.dummy_auth_token)(self.dummy_view)
         response = func(request)
         self.assertEqual(response.status_code, 200)
@@ -1712,34 +1705,26 @@ class TokenAuthRequiredTest(BaseCasesTest):
 
 class IdentityStoreTest(BaseCasesTest):
     def get_identities_callback(self, request):
-        self.assertEqual(request.headers.get('Content-Type'), "application/json")
-        self.assertEqual(request.headers.get('Authorization'), "Token auth-token")
-        headers = {'Content-Type': "application/json"}
+        self.assertEqual(request.headers.get("Content-Type"), "application/json")
+        self.assertEqual(request.headers.get("Authorization"), "Token auth-token")
+        headers = {"Content-Type": "application/json"}
         resp = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [
                 {
-                    'id': "test_id",
-                    'version': 1,
-                    'details': {
-                        'name': "test",
-                        'addresses': {
-                            'msisdn': {
-                                '+1234': {}
-                            },
-                        },
-                        'language': "eng_NG",
-                    },
-                    'communicate_through': None,
-                    'operator': None,
-                    'created_at': "2016-02-14T10:21:00.258406Z",
-                    'created_by': 1,
-                    'updated_at': "2016-03-14T10:21:00.258406Z",
-                    'updated_by': 1
+                    "id": "test_id",
+                    "version": 1,
+                    "details": {"name": "test", "addresses": {"msisdn": {"+1234": {}}}, "language": "eng_NG"},
+                    "communicate_through": None,
+                    "operator": None,
+                    "created_at": "2016-02-14T10:21:00.258406Z",
+                    "created_by": 1,
+                    "updated_at": "2016-03-14T10:21:00.258406Z",
+                    "updated_by": 1,
                 }
-            ]
+            ],
         }
         return (201, headers, json.dumps(resp))
 
@@ -1752,45 +1737,46 @@ class IdentityStoreTest(BaseCasesTest):
         identity_store = IdentityStore("http://identitystore.org/", "auth-token", "msisdn")
 
         def request_callback(request):
-            self.assertEqual(request.headers.get('Content-Type'), "application/json")
-            self.assertEqual(request.headers.get('Authorization'), "Token auth-token")
-            headers = {'Content-Type': "application/json"}
+            self.assertEqual(request.headers.get("Content-Type"), "application/json")
+            self.assertEqual(request.headers.get("Authorization"), "Token auth-token")
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'count': 2,
-                'next': None,
-                'previous': None,
-                'results': [
-                    {
-                        'address': "+4321",
-                    },
-                    {
-                        'address': "+1234",
-                    }
-                ]
+                "count": 2,
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+4321"}, {"address": "+1234"}],
             }
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/identity-uuid/" "addresses/msisdn?default=True",
-            match_querystring=True, callback=request_callback, content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/identity-uuid/" "addresses/msisdn?default=True",
+            match_querystring=True,
+            callback=request_callback,
+            content_type="application/json",
+        )
 
         def identity_callback(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'id': "identity-uuid",
-                'version': 1,
-                'details': {
-                },
-                'communicate_through': None,
-                'operator': None,
-                'created_at': "2016-06-23T13:03:18.674016Z",
-                'created_by': 1,
-                'updated_at': "2016-06-23T13:03:18.674043Z",
-                'updated_by': 1
+                "id": "identity-uuid",
+                "version": 1,
+                "details": {},
+                "communicate_through": None,
+                "operator": None,
+                "created_at": "2016-06-23T13:03:18.674016Z",
+                "created_by": 1,
+                "updated_at": "2016-06-23T13:03:18.674043Z",
+                "updated_by": 1,
             }
             return 200, headers, json.dumps(resp)
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/identity-uuid/", callback=identity_callback,
-            content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/identity-uuid/",
+            callback=identity_callback,
+            content_type="application/json",
+        )
 
         res = identity_store.get_addresses("identity-uuid")
         self.assertEqual(sorted(res), sorted(["+1234", "+4321"]))
@@ -1804,62 +1790,66 @@ class IdentityStoreTest(BaseCasesTest):
         identity_store = IdentityStore("http://identitystore.org/", "auth-token", "msisdn")
 
         def addresses_callback(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'count': 2,
-                'next': None,
-                'previous': None,
-                'results': [
-                    {
-                        'address': "+4321"
-                    },
-                    {
-                        'address': "+1234"
-                    }
-                ]
+                "count": 2,
+                "next": None,
+                "previous": None,
+                "results": [{"address": "+4321"}, {"address": "+1234"}],
             }
             return 200, headers, json.dumps(resp)
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/other-uuid/" "addresses/msisdn?default=True",
-            match_querystring=True, callback=addresses_callback, content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/other-uuid/" "addresses/msisdn?default=True",
+            match_querystring=True,
+            callback=addresses_callback,
+            content_type="application/json",
+        )
 
         def other_identity_callback(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'id': "other-uuid",
-                'version': 1,
-                'details': {
-                },
-                'communicate_through': None,
-                'operator': None,
-                'created_at': "2016-06-23T13:03:18.674016Z",
-                'created_by': 1,
-                'updated_at': "2016-06-23T13:03:18.674043Z",
-                'updated_by': 1
+                "id": "other-uuid",
+                "version": 1,
+                "details": {},
+                "communicate_through": None,
+                "operator": None,
+                "created_at": "2016-06-23T13:03:18.674016Z",
+                "created_by": 1,
+                "updated_at": "2016-06-23T13:03:18.674043Z",
+                "updated_by": 1,
             }
             return 200, headers, json.dumps(resp)
+
         responses.add_callback(
-            responses.GET, 'http://identitystore.org/api/v1/identities/other-uuid/', callback=other_identity_callback,
-            content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/other-uuid/",
+            callback=other_identity_callback,
+            content_type="application/json",
+        )
 
         def identity_callback(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'id': "identity-uuid",
-                'version': 1,
-                'details': {
-                },
-                'communicate_through': "other-uuid",
-                'operator': None,
-                'created_at': "2016-06-23T13:03:18.674016Z",
-                'created_by': 1,
-                'updated_at': "2016-06-23T13:03:18.674043Z",
-                'updated_by': 1
+                "id": "identity-uuid",
+                "version": 1,
+                "details": {},
+                "communicate_through": "other-uuid",
+                "operator": None,
+                "created_at": "2016-06-23T13:03:18.674016Z",
+                "created_by": 1,
+                "updated_at": "2016-06-23T13:03:18.674043Z",
+                "updated_by": 1,
             }
             return 200, headers, json.dumps(resp)
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/identity-uuid/", callback=identity_callback,
-            content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/identity-uuid/",
+            callback=identity_callback,
+            content_type="application/json",
+        )
 
         res = identity_store.get_addresses("identity-uuid")
         self.assertEqual(sorted(res), sorted(["+1234", "+4321"]))
@@ -1872,10 +1862,14 @@ class IdentityStoreTest(BaseCasesTest):
         identity_store = IdentityStore("http://identitystore.org/", "auth-token", "msisdn")
 
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/?details__name=test", match_querystring=True,
-            callback=self.get_identities_callback, content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/?details__name=test",
+            match_querystring=True,
+            callback=self.get_identities_callback,
+            content_type="application/json",
+        )
 
-        [[identity]] = identity_store.get_identities(details__name="test")
+        [identity] = identity_store.get_identities(details__name="test")
         self.assertEqual(identity.name, "test")
 
     @responses.activate
@@ -1887,85 +1881,65 @@ class IdentityStoreTest(BaseCasesTest):
         identity_store = IdentityStore("http://identitystore.org/", "auth-token", "msisdn")
 
         def request_callback_1(request):
-            headers = {'Content-Type': "application/json"}
+            headers = {"Content-Type": "application/json"}
             resp = {
-                'count': 5,
-                'next': (
+                "count": 5,
+                "next": (
                     "http://identitystore.org/api/v1/identities/identity-uuid/"
-                    "addresses/msisdn?default=True&limit=2&offset=2"),
-                'previous': None,
-                'results': [
-                    {
-                        'address': "+1111"
-                    },
-                    {
-                        'address': "+2222"
-                    }
-                ]
+                    "addresses/msisdn?default=True&limit=2&offset=2"
+                ),
+                "previous": None,
+                "results": [{"address": "+1111"}, {"address": "+2222"}],
             }
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/identity-uuid/addresses/msisdn?default=True",
-            match_querystring=True, callback=request_callback_1, content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/identity-uuid/addresses/msisdn?default=True",
+            match_querystring=True,
+            callback=request_callback_1,
+            content_type="application/json",
+        )
 
         def request_callback_2(request):
-            headers = {'Content-Type': "application/json"}
-            resp = {
-                'count': 5,
-                'next': None,
-                'previous': None,
-                'results': [
-                    {
-                        'address': "+3333"
-                    },
-                ]
-            }
+            headers = {"Content-Type": "application/json"}
+            resp = {"count": 5, "next": None, "previous": None, "results": [{"address": "+3333"}]}
             return (201, headers, json.dumps(resp))
+
         responses.add_callback(
-            responses.GET, "http://identitystore.org/api/v1/identities/identity-uuid/"
-            "addresses/msisdn?default=True&limit=2&offset=2", match_querystring=True, callback=request_callback_2,
-            content_type="application/json")
+            responses.GET,
+            "http://identitystore.org/api/v1/identities/identity-uuid/"
+            "addresses/msisdn?default=True&limit=2&offset=2",
+            match_querystring=True,
+            callback=request_callback_2,
+            content_type="application/json",
+        )
 
         res = identity_store.get_paginated_response(
-            ("http://identitystore.org/api/v1/identities/identity-uuid/" "addresses/msisdn"), params={'default': True})
-        self.assertEqual(sorted(res, key=lambda x: x['address']), [
-            {'address': "+1111"},
-            {'address': "+2222"},
-            {'address': "+3333"},
-        ])
+            ("http://identitystore.org/api/v1/identities/identity-uuid/" "addresses/msisdn"), params={"default": True}
+        )
+        self.assertEqual(
+            sorted(res, key=lambda x: x["address"]), [{"address": "+1111"}, {"address": "+2222"}, {"address": "+3333"}]
+        )
 
     def create_identity_obj(self, **kwargs):
         defaults = {
-            'id': "50d62fcf-856a-489c-914a-56f6e9506ee3",
-            'version': 1,
-            'details': {
-                'addresses': {
-                    'msisdn': {
-                        '+1234': {}
-                    }
-                },
-                'default_addr_type': "msisdn",
-            },
-            'communicate_through': None,
-            'operator': None,
-            'created_at': "2016-06-23T13:15:55.580070Z",
-            'created_by': 1,
-            'updated_at': "2016-06-23T13:15:55.580099Z",
-            'updated_by': 1
+            "id": "50d62fcf-856a-489c-914a-56f6e9506ee3",
+            "version": 1,
+            "details": {"addresses": {"msisdn": {"+1234": {}}}, "default_addr_type": "msisdn"},
+            "communicate_through": None,
+            "operator": None,
+            "created_at": "2016-06-23T13:15:55.580070Z",
+            "created_by": 1,
+            "updated_at": "2016-06-23T13:15:55.580099Z",
+            "updated_by": 1,
         }
         defaults.update(kwargs)
         return defaults
 
     def single_identity_callback(self, request):
-        headers = {'Content-Type': "application/json"}
-        data = {
-            'count': 1,
-            'next': None,
-            'previous': None,
-            'results': [
-                self.create_identity_obj(),
-            ]
-        }
+        headers = {"Content-Type": "application/json"}
+        data = {"count": 1, "next": None, "previous": None, "results": [self.create_identity_obj()]}
         return (200, headers, json.dumps(data))
 
     @responses.activate
@@ -1979,25 +1953,28 @@ class IdentityStoreTest(BaseCasesTest):
         query = "?details__addresses__msisdn=%2B1234"
         url = "http://identitystore.org/api/v1/identities/search/"
         responses.add_callback(
-            responses.GET, url + query, callback=self.single_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url + query,
+            callback=self.single_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         [identity] = identity_store.get_identities_for_address("+1234")
-        self.assertEqual(identity['details']['addresses']['msisdn'], {'+1234': {}})
+        self.assertEqual(identity["details"]["addresses"]["msisdn"], {"+1234": {}})
 
     def create_identity_callback(self, request):
         data = json_decode(request.body)
-        self.assertEqual(data.get('details'), {
-            'addresses': {
-                'msisdn': {
-                    '+1234': {},
-                },
+        self.assertEqual(
+            data.get("details"),
+            {
+                "addresses": {"msisdn": {"+1234": {}}},
+                "default_addr_type": "msisdn",
+                "name": "Test identity",
+                "language": "eng",
             },
-            'default_addr_type': "msisdn",
-            'name': "Test identity",
-            'language': "eng",
-        })
-        headers = {'Content-Type': "application/json"}
+        )
+        headers = {"Content-Type": "application/json"}
         return (201, headers, json.dumps(self.create_identity_obj()))
 
     @responses.activate
@@ -2010,21 +1987,18 @@ class IdentityStoreTest(BaseCasesTest):
 
         url = "http://identitystore.org/api/v1/identities/"
         responses.add_callback(
-            responses.POST, url, callback=self.create_identity_callback, match_querystring=True,
-            content_type="application/json")
+            responses.POST,
+            url,
+            callback=self.create_identity_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         identity = identity_store.create_identity(["tel:+1234"], name="Test identity", language="eng")
-        self.assertEqual(identity['details'], {
-            'addresses': {
-                'msisdn': {
-                    '+1234': {},
-                },
-            },
-            'default_addr_type': "msisdn",
-        })
+        self.assertEqual(identity["details"], {"addresses": {"msisdn": {"+1234": {}}}, "default_addr_type": "msisdn"})
 
     def identity_404_callback(self, request):
-        return (404, {'Content-Type': "application/json"}, json.dumps({'detail': "Not found."}))
+        return (404, {"Content-Type": "application/json"}, json.dumps({"detail": "Not found."}))
 
     @responses.activate
     def test_get_identity_404(self):
@@ -2036,8 +2010,12 @@ class IdentityStoreTest(BaseCasesTest):
 
         url = "http://identitystore.org/api/v1/identities/identity-uuid/"
         responses.add_callback(
-            responses.GET, url, callback=self.identity_404_callback, match_querystring=True,
-            content_type="application/json")
+            responses.GET,
+            url,
+            callback=self.identity_404_callback,
+            match_querystring=True,
+            content_type="application/json",
+        )
 
         identity = identity_store.get_identity("identity-uuid")
         self.assertEqual(identity, None)
@@ -2046,17 +2024,15 @@ class IdentityStoreTest(BaseCasesTest):
 class IdentityStoreContactTest(BaseCasesTest):
     def test_contact_with_defaults(self):
         identity_data = {
-            'id': "test_id",
-            'version': 1,
-            'details': {
-                'addresses': {},
-            },
-            'communicate_through': None,
-            'operator': None,
-            'created_at': "2016-02-14T10:21:00.258406Z",
-            'created_by': 1,
-            'updated_at': None,
-            'updated_by': None
+            "id": "test_id",
+            "version": 1,
+            "details": {"addresses": {}},
+            "communicate_through": None,
+            "operator": None,
+            "created_at": "2016-02-14T10:21:00.258406Z",
+            "created_by": 1,
+            "updated_at": None,
+            "updated_by": None,
         }
 
         identity_contact = IdentityStoreContact(identity_data)
@@ -2066,27 +2042,19 @@ class IdentityStoreContactTest(BaseCasesTest):
 
     def test_contact_with_data(self):
         identity_data = {
-            'id': "test_id",
-            'version': 1,
-            'details': {
-                'name': "test",
-                'addresses': {
-                    'msisdn': {
-                        '+1234': {}
-                    },
-                },
-                'language': "eng_NG",
-            },
-            'communicate_through': None,
-            'operator': None,
-            'created_at': "2016-02-14T10:21:00.258406Z",
-            'created_by': 1,
-            'updated_at': "2016-03-14T10:21:00.258406Z",
-            'updated_by': 1
+            "id": "test_id",
+            "version": 1,
+            "details": {"name": "test", "addresses": {"msisdn": {"+1234": {}}}, "language": "eng_NG"},
+            "communicate_through": None,
+            "operator": None,
+            "created_at": "2016-02-14T10:21:00.258406Z",
+            "created_by": 1,
+            "updated_at": "2016-03-14T10:21:00.258406Z",
+            "updated_by": 1,
         }
 
         identity_contact = IdentityStoreContact(identity_data)
-        self.assertEqual(identity_contact.id, 'test_id')
+        self.assertEqual(identity_contact.id, "test_id")
         self.assertEqual(identity_contact.name, "test")
         self.assertEqual(identity_contact.language, "eng")
 
@@ -2097,39 +2065,35 @@ class IdentityStoreContactSyncerTest(BaseCasesTest):
     def mk_identity_store_contact(self):
         return IdentityStoreContact(
             {
-                'id': "test_1",
-                'version': "1",
-                'details': {
-                    'language': "eng_NG",
-                    'name': "test",
-                    'addresses': {
-                        'msisdn': {
-                            '+1234': {}
-                        }
-                    }
-                },
-                'communicate_through': None,
-                'operator': None,
-                'created_at': "2016-03-14T10:21:00.258406Z",
-                'created_by': 1,
-                'updated_at': "2016-03-14T10:21:00.258441Z",
-                'updated_by': 1
-            })
+                "id": "test_1",
+                "version": "1",
+                "details": {"language": "eng_NG", "name": "test", "addresses": {"msisdn": {"+1234": {}}}},
+                "communicate_through": None,
+                "operator": None,
+                "created_at": "2016-03-14T10:21:00.258406Z",
+                "created_by": 1,
+                "updated_at": "2016-03-14T10:21:00.258441Z",
+                "updated_by": 1,
+            }
+        )
 
     def test_local_kwargs(self):
         kwargs = self.syncer.local_kwargs(self.unicef, self.mk_identity_store_contact())
 
-        self.assertEqual(kwargs, {
-            'org': self.unicef,
-            'uuid': "test_1",
-            'name': "test",
-            'language': "eng",
-            'is_blocked': False,
-            'is_stub': False,
-            'fields': {},
-            '__data__groups': {},
-            'urns': ["tel:+1234"]
-        })
+        self.assertEqual(
+            kwargs,
+            {
+                "org": self.unicef,
+                "uuid": "test_1",
+                "name": "test",
+                "language": "eng",
+                "is_blocked": False,
+                "is_stub": False,
+                "fields": {},
+                "__data__groups": {},
+                "urns": ["tel:+1234"],
+            },
+        )
 
     def test_update_required_on_stub(self):
         # create stub contact
@@ -2138,7 +2102,9 @@ class IdentityStoreContactSyncerTest(BaseCasesTest):
         self.assertTrue(self.syncer.update_required(local, self.mk_identity_store_contact(), {}))
 
     def test_no_update_required(self):
-        local = Contact.objects.create(org=self.unicef, uuid="test_id", name="test", language="eng", urns=["tel:+1234"])
+        local = Contact.objects.create(
+            org=self.unicef, uuid="test_id", name="test", language="eng", urns=["tel:+1234"]
+        )
         self.assertFalse(self.syncer.update_required(local, self.mk_identity_store_contact(), {}))
 
     def test_update_required_name_different(self):

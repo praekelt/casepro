@@ -10,7 +10,7 @@ INTERVAL_CASE_INFO = 30000
 INTERVAL_CASE_TIMELINE = 30000
 INTERVAL_ITEM_REFRESH = 10000
 
-INFINITE_SCROLL_MAX_ITEMS = 1000
+INFINITE_SCROLL_MAX_ITEMS = 2000
 
 # Form constraints
 CASE_SUMMARY_MAX_LEN = 255
@@ -25,7 +25,6 @@ controllers.controller('InboxController', ['$scope', '$window', '$location', 'La
 
   $scope.user = $window.contextData.user
   $scope.labels = $window.contextData.labels
-  $scope.groups = $window.contextData.groups
   $scope.fields = $window.contextData.fields
 
   $scope.activeLabel = null
@@ -115,7 +114,7 @@ controllers.controller('BaseTabsController', ['$scope', '$location', ($scope, $l
 # Base controller class for controllers which display fetched items with
 # infinite scrolling, e.g. lists of messages, cases etc
 #============================================================================
-controllers.controller('BaseItemsController', ['$scope', '$timeout', 'UtilsService', ($scope, $timeout, UtilsService) ->
+controllers.controller('BaseItemsController', ['$scope', '$timeout', '$filter', 'UtilsService', ($scope, $timeout, $filter, UtilsService) ->
 
   $scope.items = []
   $scope.oldItemsLoading = false
@@ -219,15 +218,18 @@ controllers.controller('BaseItemsController', ['$scope', '$timeout', 'UtilsServi
     if $scope.pollBusy
       return
 
+    lastPollTime = $scope.lastPollTime
+    thisPollTime = new Date()
+
     $scope.pollBusy = true
     $scope.activeSearchRefresh = $scope.buildSearch()
-    $scope.activeSearchRefresh.last_refresh = $scope.lastPollTime
+    $scope.activeSearchRefresh.last_refresh = lastPollTime
 
-    $scope.fetchLockedItems($scope.activeSearchRefresh, $scope.lastPollTime, $scope.oldItemsPage).then((data) ->
-      $scope.lastPollTime = new Date()
+    $scope.fetchNewItems($scope.activeSearchRefresh, lastPollTime, thisPollTime, $scope.oldItemsPage).then((data) ->
+      $scope.lastPollTime = thisPollTime
       $scope.pollBusy = false
 
-      # quick access to index of items
+      # quick access to index of existing messages
       scopeItems = {}
       for item, i in $scope.items
         scopeItems[item.id] = i
@@ -238,8 +240,9 @@ controllers.controller('BaseItemsController', ['$scope', '$timeout', 'UtilsServi
           item.selected = $scope.items[scopeItems[item.id]].selected
           $scope.items[scopeItems[item.id]] = item
         else
-          # new item so we add it to the top
-          $scope.items.unshift(item)
+          $scope.items.push(item)
+
+      $scope.items = $filter('orderBy')($scope.items, 'time', true)
 
       # deactivate busy state after message lock interval
       for item in $scope.items
@@ -330,7 +333,7 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
 
     return search
 
-  $scope.searchFieldDefaults = () -> { text: null, groups: [], after: null, before: null, archived: false }
+  $scope.searchFieldDefaults = () -> { text: null, after: null, before: null, archived: false }
 
   $scope.setAdvancedSearch = (state) ->
     $scope.advancedSearch = state
@@ -342,9 +345,8 @@ controllers.controller('MessagesController', ['$scope', '$interval', '$uibModal'
       )
     )
 
-  $scope.fetchLockedItems = (activeSearchRefresh, lastPollTime, oldItemsPage) ->
-    return MessageService.fetchOld(activeSearchRefresh, lastPollTime, oldItemsPage)
-    
+  $scope.fetchNewItems = (activeSearchRefresh, startTime, endTime, oldItemsPage) ->
+    return MessageService.fetchNew(activeSearchRefresh, startTime, endTime, oldItemsPage)
 
   $scope.fetchOldItems = (search, startTime, page) ->
     return MessageService.fetchOld(search, startTime, page)
