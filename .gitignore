@@ -24,6 +24,8 @@ fabconfig.py
 .idea/
 .DS_Store
 casepro36/
+include/
+bin/
 
 # C extensions
 *.so
