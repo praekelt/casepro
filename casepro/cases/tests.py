@@ -1252,7 +1252,6 @@ class CaseExportCRUDLTest(BaseCasesTest):
 class InboxViewsTest(BaseCasesTest):
     def test_inbox(self):
         url = reverse("cases.inbox")
-
         response = self.url_get("unicef", url)
         self.assertLoginRedirect(response, url)
 

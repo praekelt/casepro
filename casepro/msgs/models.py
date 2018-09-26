@@ -322,6 +322,8 @@ class Message(models.Model):
 
     backend_id = models.IntegerField(unique=True, help_text=_("Backend identifier for this message"))
 
+    metadata = HStoreField(blank=True, null=True, default={}, help_text=_('Metadata for the received message.'))
+
     contact = models.ForeignKey(Contact, related_name="incoming_messages", on_delete=models.PROTECT)
 
     type = models.CharField(max_length=1)

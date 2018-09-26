@@ -1,4 +1,24 @@
+from __future__ import unicode_literals
+
 from abc import ABCMeta, abstractmethod
+from django.conf import settings
+from pydoc import locate
+
+_ACTIVE_BACKEND = None
+
+
+def get_backend_class():
+    return locate(settings.SITE_BACKEND)
+
+
+def get_backend():
+    """
+    Gets the active backend for this casepro instance
+    """
+    global _ACTIVE_BACKEND
+    if not _ACTIVE_BACKEND:
+        _ACTIVE_BACKEND = get_backend_class()()
+    return _ACTIVE_BACKEND
 
 
 class BaseBackendException(Exception):

@@ -1,11 +1,10 @@
 import functools
 import random
 from datetime import datetime
-from itertools import chain
-
+import requests
+import logging
 import dateutil.parser
 import pytz
-import requests
 from dash.utils import is_dict_equal
 from dash.utils.sync import BaseSyncer, sync_local_to_changes
 from django.conf import settings
@@ -14,10 +13,11 @@ from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from . import BaseBackend
+from . import BaseBackend, BaseBackendException
 from ..contacts.models import URN, Contact
 from ..msgs.models import Message
-from ..utils import json_decode, uuid_to_int
+from ..utils import uuid_to_int, json_decode
+from itertools import chain
 
 
 logger = logging.getLogger(__name__)
@@ -56,12 +56,19 @@ class HubMessageSender(object):
             "label": label,
             "inbound_created_on": inbound_created_on.isoformat(),
             "outbound_created_on": outgoing.created_on.isoformat(),
+            'inbound_channel_id': inbound_channel_id,
         }
 
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):
         if self.base_url and self.auth_token:
             json_data = self.build_outgoing_message_json(outgoing, to_addr)
-            self.session.post("%s/jembi/helpdesk/outgoing/" % self.base_url, json=json_data)
+            r = self.session.post(
+                '%s/jembi/helpdesk/outgoing/' % self.base_url,
+                json=json_data)
+            if not r.ok:
+                logger.error(
+                    "Submission to Hub unsuccessful. Code: %s Response: %s"
+                    % (r.status_code, r.text))
 
 
 class IdentityStore(object):
@@ -163,6 +170,7 @@ class IdentityStoreContact(object):
         remote_language = json_data.get("details").get(language_field)
         if remote_language is not None:
             self.language, _, _ = remote_language.partition("_")
+            self.language = self.language[:3]
         self.name = json_data.get("details").get("name", None)
         self.fields = {}
         self.groups = {}
@@ -231,8 +239,8 @@ class JunebugMessageSendingError(Exception):
 
 
 class JunebugMessageSender(object):
-    def __init__(self, channel_url, channel_id, from_address, identity_store):
-        self.channel_url = channel_url
+    def __init__(self, base_url, channel_id, from_address, identity_store):
+        self.base_url = base_url
         self.channel_id = channel_id
         self.from_address = from_address
         self.identity_store = identity_store
@@ -291,11 +299,22 @@ class JunebugBackend(BaseBackend):
 
     def __init__(self):
         self.identity_store = IdentityStore(
-            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE
-        )
-        self.message_sender = JunebugMessageSender(
-            settings.JUNEBUG_API_ROOT, settings.JUNEBUG_CHANNEL_ID, settings.JUNEBUG_FROM_ADDRESS, self.identity_store
-        )
+            settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
+        self.message_senders = dict([
+            (channel_id, JunebugMessageSender(
+                channel_info['API_ROOT'],
+                channel_id,
+                channel_info['FROM_ADDRESS'],
+                self.identity_store))
+            for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items()])
+
+    @classmethod
+    def validate_settings(cls):
+        for channel_id, channel_info in settings.JUNEBUG_CHANNELS.items():
+            if set(channel_info.keys()) != set(['API_ROOT', 'FROM_ADDRESS']):
+                raise JunebugBackendException(
+                    'Bad Junebug Channel config, keys '
+                    'API_ROOT and FROM_ADDRESS are required.')
 
     def pull_contacts(self, org, modified_after, modified_before, progress_callback=None):
         """
@@ -315,11 +334,11 @@ class JunebugBackend(BaseBackend):
         # all identities modified in the Identity Store in the time window
         modified_identities = identity_store.get_identities(updated_from=modified_after, updated_to=modified_before)
 
-        identities_to_update = chain(modified_identities, new_identities)
+        identities_to_update = list(chain(modified_identities, new_identities))
 
         # sync_local_to_changes() expects iterables for the 3rd and 4th args
         # Deleted identities are updated via the Identity Store callback
-        return sync_local_to_changes(org, IdentityStoreContactSyncer(), identities_to_update, [], progress_callback)
+        return sync_local_to_changes(org, IdentityStoreContactSyncer(), [identities_to_update], [], progress_callback)
 
     def pull_fields(self, org):
         """
@@ -606,6 +625,12 @@ def received_junebug_message(request):
 
     message_id = uuid_to_int(data.get("message_id"))
 
+    metadata = {
+        'backend': 'casepro.backend.junebug.JunebugBackend',
+        'channel_id': data['channel_id'],
+        'message_id': data['message_id'],
+    }
+
     if "timestamp" in data:
         timestamp = dateutil.parser.parse(data["timestamp"])
         if not timestamp.tzinfo:
@@ -625,6 +650,7 @@ def received_junebug_message(request):
                 text=(data.get("content") or ""),
                 created_on=timestamp,
                 has_labels=True,
+                metadata=metadata
             )
     except IntegrityError as e:
         # If there's a clash, try to generate a random one that doesn't result in a clash
@@ -641,6 +667,7 @@ def received_junebug_message(request):
                         text=(data.get("content") or ""),
                         created_on=timestamp,
                         has_labels=True,
+                        metadata=metadata
                     )
                 break
             except IntegrityError:

@@ -63,11 +63,14 @@ SITE_ALLOW_CASE_WITHOUT_MESSAGE = True
 SITE_MAX_MESSAGE_CHARS = 160  # the max value for this is 800
 
 # junebug configuration
-JUNEBUG_API_ROOT = "http://localhost:8080/"
-JUNEBUG_INBOUND_URL = r"^junebug/inbound$"
-JUNEBUG_CHANNEL_ID = "replace-me"
-JUNEBUG_FROM_ADDRESS = None
-
+JUNEBUG_DEFAULT_CHANNEL_ID = 'replace-me'
+JUNEBUG_CHANNELS = {
+    JUNEBUG_DEFAULT_CHANNEL_ID: {
+        'API_ROOT': 'http://localhost:8080/',
+        'FROM_ADDRESS': None,
+    }
+}
+JUNEBUG_INBOUND_URL = r'^junebug/inbound$'
 JUNEBUG_HUB_BASE_URL = None
 JUNEBUG_HUB_AUTH_TOKEN = None
 
@@ -396,7 +399,11 @@ LOGOUT_URL = "/users/logout/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-AUTHENTICATION_BACKENDS = ("smartmin.backends.CaseInsensitiveBackend",)
+AUTHENTICATION_BACKENDS = (
+    'smartmin.backends.CaseInsensitiveBackend',
+)
+
+ANONYMOUS_USER_ID = -1
 
 # -----------------------------------------------------------------------------------
 # Debug Toolbar
