@@ -1,5 +1,5 @@
-FROM praekeltfoundation/django-bootstrap:py3.6
-RUN apt-get-install.sh git nodejs npm \
+FROM praekeltfoundation/django-bootstrap:py3.6-jessie
+RUN apt-get-install.sh git nodejs \
     redis-server supervisor libpq-dev gcc && \
     ln -s /usr/bin/nodejs /usr/bin/node
 
@@ -10,9 +10,6 @@ RUN mkdir -p /app/media
 
 RUN mkdir -p /etc/supervisor/conf.d/
 RUN mkdir -p /var/log/supervisor
-
-# startup.sh 
-RUN cd /casepro && npm install npm@latest && npm install && bower install --allow-root
 
 COPY docker/docker-start.sh /scripts/
 RUN chmod a+x /scripts/docker-start.sh
