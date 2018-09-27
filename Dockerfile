@@ -1,5 +1,5 @@
 FROM praekeltfoundation/django-bootstrap:py3.6-jessie
-RUN apt-get-install.sh git nodejs \
+RUN apt-get-install.sh git nodejs npm \
     redis-server supervisor libpq-dev gcc && \
     ln -s /usr/bin/nodejs /usr/bin/node
 
