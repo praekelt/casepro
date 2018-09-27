@@ -3,7 +3,7 @@ import os
 import dj_database_url
 
 # import our default settings
-from settings_common import *  # noqa
+from casepro.settings_common import * # noqa
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'REPLACEME')
 if os.environ.get('DEBUG', 'False') == 'True':  # envvars are strings
