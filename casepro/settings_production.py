@@ -72,7 +72,7 @@ else:
     JUNEBUG_CHANNELS = {
         JUNEBUG_DEFAULT_CHANNEL_ID: {
             'FROM_ADDRESS': os.environ.get('JUNEBUG_FROM_ADDRESS', None),
-            'API_URL': os.environ.get('JUNEBUG_API_URL', 'http://localhost:8080/channels/replace-me/messages/'),
+            'API_ROOT': os.environ.get('JUNEBUG_API_ROOT', 'http://localhost:8080/channels/replace-me/messages/'),
         }
     }
 
