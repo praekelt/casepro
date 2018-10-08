@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import os
 
 # import our default settings
-from settings_production import *  # noqa
+from .settings_production import *  # noqa
 
 
 LOGGING['loggers']['casepro.backend.junebug'] = {  # noqa: F405
