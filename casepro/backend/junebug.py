@@ -297,7 +297,7 @@ class JunebugBackend(BaseBackend):
     Junebug instance as a backend.
     """
 
-    def __init__(self):
+    def __init__(self, backend=None, as_handled=False):
         self.identity_store = IdentityStore(
             settings.IDENTITY_API_ROOT, settings.IDENTITY_AUTH_TOKEN, settings.IDENTITY_ADDRESS_TYPE)
         self.message_senders = dict([
