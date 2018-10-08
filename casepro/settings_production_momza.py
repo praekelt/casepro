@@ -10,6 +10,10 @@ LOGGING['loggers']['casepro.backend.junebug'] = {  # noqa: F405
     'level': 'INFO',
 }
 
+DATA_API_BACKEND_TYPES = (("casepro.backend.junebug", "Junebug Backend Type"),)
+DATA_API_BACKEND_TYPES = (("casepro.backend.rapidpro.RapidProBackend", "RapidPro Backend Type"),)
+
+
 PODS[0]['contact_id_fieldname'] = os.environ.get(  # noqa: F405
     'REGISTRATION_CONTACT_ID_FIELDNAME',
     'registrant_id',
