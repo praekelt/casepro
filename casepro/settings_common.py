@@ -66,7 +66,7 @@ SITE_MAX_MESSAGE_CHARS = 160  # the max value for this is 800
 JUNEBUG_DEFAULT_CHANNEL_ID = 'replace-me'
 JUNEBUG_CHANNELS = {
     JUNEBUG_DEFAULT_CHANNEL_ID: {
-        'API_ROOT': 'http://localhost:8080/',
+        'API_URL': os.environ.get('JUNEBUG_API_URL', 'http://localhost:8080/channels/replace-me/messages/'),
         'FROM_ADDRESS': None,
     }
 }
