@@ -541,7 +541,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -579,7 +579,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -658,7 +658,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -734,7 +734,7 @@ class JunebugBackendTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         },
@@ -1226,10 +1226,18 @@ class JunebugInboundViewTest(BaseCasesTest):
             'backend': 'casepro.backend.junebug.JunebugBackend',
         })
 
-    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234'):
+    def assertJunebugMessageSent(self, url, to_addr, from_addr, content, message_id='message-uuid-1234', reply_to=None):
         def junebug_callback(request):
             data = json_decode(request.body)
-            self.assertEqual(data, {'to': to_addr, 'from': from_addr, 'content': content})
+            expected_data = {
+                'to': to_addr,
+                'from': from_addr,
+                'content': content,
+            }
+            if reply_to is not None:
+                expected_data['reply_to'] = reply_to
+
+            self.assertEqual(data, expected_data)
             headers = {'Content-Type': "application/json"}
             resp = {
                 'status': 201,
@@ -1250,7 +1258,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://localhost:8080/',
+                'API_URL': 'http://localhost:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1279,11 +1287,11 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://bad.example.org:8080/',
+                'API_URL': 'http://bad.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             },
             'junebug-channel-id': {
-                'API_ROOT': 'http://good.example.org:8080/',
+                'API_URL': 'http://good.example.org:8080/channels/junebug-channel-id/messages/',
                 'FROM_ADDRESS': '+6789',
             }
         })
@@ -1335,7 +1343,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://default.example.org:8080/',
+                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })
@@ -1388,7 +1396,7 @@ class JunebugInboundViewTest(BaseCasesTest):
         JUNEBUG_DEFAULT_CHANNEL_ID='replace-me',
         JUNEBUG_CHANNELS={
             'replace-me': {
-                'API_ROOT': 'http://default.example.org:8080/',
+                'API_URL': 'http://default.example.org:8080/channels/replace-me/messages/',
                 'FROM_ADDRESS': '+4321',
             }
         })

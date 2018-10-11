@@ -1,4 +1,4 @@
-from casepro.settings import *  # noqa
+from casepro.settings_common import * # noqa
 
 COMPRESS_ENABLED = True
 COMPRESS_OFFLINE = True
