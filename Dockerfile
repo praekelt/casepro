@@ -1,5 +1,5 @@
 FROM praekeltfoundation/django-bootstrap:py3.6-jessie
-RUN apt-get-install.sh git nodejs npm \
+RUN apt-get-install.sh git \
     redis-server supervisor libpq-dev gcc && \
     ln -s /usr/bin/nodejs /usr/bin/node
 
@@ -32,9 +32,9 @@ EXPOSE 8000
 CMD ["docker-start.sh"]
 
 COPY . /app
-RUN pip install -e . 
-RUN pip install -r pip-freeze.txt 
-RUN pip install -r pip-freeze-praekelt.txt
-RUN npm install -g less coffee-script 
-RUN django-admin collectstatic --noinput  
-RUN USE_DEFAULT_CACHE=True django-admin compress
+RUN pip install -e . &&\
+pip install -r pip-freeze.txt &&\
+pip install -r pip-freeze-praekelt.txt &&\
+npm install -g less coffee-script &&\
+django-admin collectstatic --noinput &&\  
+USE_DEFAULT_CACHE=True django-admin compress
