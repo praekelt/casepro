@@ -5,11 +5,7 @@ RUN apt-get-install.sh git \
 
 #Upgrade Nodejs to v4.9 as the current version v4.6 doesn't appear to have support for object.assign 
 #Check https://node.green for compatibility
-RUN apt-get update
-RUN apt-get install curl -y
-RUN curl -sL https://deb.nodesource.com/setup_4.x | bash
-RUN apt-get install nodejs -y
-
+RUN apt-get update && apt-get install curl -y && curl -sL https://deb.nodesource.com/setup_4.x | bash && apt-get install nodejs -y
 
 ENV DJANGO_SETTINGS_MODULE "casepro.settings_production"
 ENV APP_MODULE "casepro.wsgi:application"
