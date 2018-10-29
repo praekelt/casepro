@@ -173,7 +173,7 @@ PODS = [{
     'stage_based_messaging_token': os.environ.get(
         'STAGE_BASED_MESSAGING_TOKEN', 'stage-based-messaging-token'
     ),
-    'wassup_url': os.environ.get(
+    'engage_url': os.environ.get(
         'ENGAGE_URL', 'https://engage.example.org/v1/contacts'
     ),
     'engage_token': os.environ.get(
