@@ -1,2 +1,2 @@
-casepropods.family_connect_registration>=2.0.3
+casepropods.family_connect_registration>=2.0.6
 casepropods.family_connect_subscription>=0.3.3
