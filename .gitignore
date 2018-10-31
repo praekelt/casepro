@@ -9,6 +9,7 @@ db/
 dash
 deploy
 celerybeat-schedule.db
+celerybeat-schedule
 src/
 node_modules/
 
@@ -18,8 +19,14 @@ casepro/settings.py.staging
 fabfile.py
 fabconfig.py
 
+.vscode/
+
 .idea/
 .DS_Store
+casepro36/
+include/
+bin/
+local/
 
 # C extensions
 *.so
