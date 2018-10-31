@@ -179,9 +179,6 @@ PODS = [{
     'engage_token': os.environ.get(
         'ENGAGE_TOKEN', 'engage-token'
     ),
-    'engage_number': os.environ.get(
-        'ENGAGE_NUMBER', '+27820000000'
-    ),
     'contact_id_fieldname': os.environ.get('REGISTRATION_CONTACT_ID_FIELDNAME',
                                            'mother_id'),
     'field_mapping': [
