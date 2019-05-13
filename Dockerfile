@@ -1,8 +1,8 @@
-FROM praekeltfoundation/django-bootstrap:latest
+FROM praekeltfoundation/django-bootstrap:py3.6-stretch
 
 #Upgrade Nodejs to v4.9 as the current version v4.6 doesn't appear to have support for object.assign 
 #Check https://node.green for compatibility
-RUN apt-get update && apt-get install git redis-server supervisor libpq-dev gcc curl -y && curl -sL https://deb.nodesource.com/setup_4.x | bash && apt-get install nodejs -y && apt-get autoremove -y && apt-get clean
+RUN apt-get update && apt-get-install.sh git redis-server supervisor libpq-dev gcc curl -y && curl -sL https://deb.nodesource.com/setup_4.x | bash && apt-get install nodejs -y
 
 ENV DJANGO_SETTINGS_MODULE "casepro.settings_production"
 ENV APP_MODULE "casepro.wsgi:application"
