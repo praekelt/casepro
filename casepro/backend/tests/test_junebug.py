@@ -613,6 +613,7 @@ class JunebugBackendTest(BaseCasesTest):
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
                     'inbound_channel_id': '',
+                    "message_id": 8,
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -691,7 +692,8 @@ class JunebugBackendTest(BaseCasesTest):
                     "to": "+1234",
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
-                    "inbound_channel_id": ''
+                    "inbound_channel_id": '',
+                    "message_id": 9,
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -763,7 +765,7 @@ class JunebugBackendTest(BaseCasesTest):
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
                 'label': '', 'reply_to': 'Hello', 'to': '+1234', 'user_id': 'C-002',
                 'helpdesk_operator_id': self.user1.id,
-                'inbound_channel_id': ''})
+                'inbound_channel_id': '', "message_id": 10})
             headers = {'Content-Type': "application/json"}
             resp = {
                 "to": [
