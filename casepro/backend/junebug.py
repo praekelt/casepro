@@ -60,6 +60,7 @@ class HubMessageSender(object):
             "inbound_created_on": inbound_created_on.isoformat(),
             "outbound_created_on": outgoing.created_on.isoformat(),
             'inbound_channel_id': inbound_channel_id,
+            "message_id": outgoing.id,
         }
 
     def send_helpdesk_outgoing_message(self, outgoing, to_addr):

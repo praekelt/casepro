@@ -599,6 +599,22 @@ class JunebugBackendTest(BaseCasesTest):
             }
             return (200, headers, json.dumps(resp))
 
+        bob = self.create_contact(self.unicef, "C-002", "Bob")
+        msg = self.create_message(
+            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc)
+        )
+        out_msg = self.create_outgoing(
+            self.unicef,
+            self.user1,
+            None,
+            "B",
+            "That's great",
+            bob,
+            urn="tel:+1234",
+            reply_to=msg,
+            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc),
+        )
+
         def hub_outgoing_callback(request):
             data = json_decode(request.body)
             self.assertEqual(
@@ -613,6 +629,7 @@ class JunebugBackendTest(BaseCasesTest):
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
                     'inbound_channel_id': '',
+                    "message_id": out_msg.id,
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -632,24 +649,8 @@ class JunebugBackendTest(BaseCasesTest):
         )
         self.add_hub_outgoing_callback(hub_outgoing_callback)
 
-        bob = self.create_contact(self.unicef, "C-002", "Bob")
-        msg = self.create_message(
-            self.unicef, 123, bob, "Hello", created_on=datetime(2016, 11, 16, 10, 30, tzinfo=pytz.utc)
-        )
         msg.label(self.aids)
         self.backend = JunebugBackend()
-        out_msg = self.create_outgoing(
-            self.unicef,
-            self.user1,
-            None,
-            "B",
-            "That's great",
-            bob,
-            urn="tel:+1234",
-            reply_to=msg,
-            created_on=datetime(2016, 11, 17, 10, 30, tzinfo=pytz.utc),
-        )
-
         self.backend.push_outgoing(self.unicef, [out_msg])
         self.assertEqual(len(responses.calls), 2)
 
@@ -691,7 +692,8 @@ class JunebugBackendTest(BaseCasesTest):
                     "to": "+1234",
                     "user_id": "C-002",
                     "helpdesk_operator_id": self.user1.id,
-                    "inbound_channel_id": ''
+                    "inbound_channel_id": '',
+                    "message_id": out_msg.id,
                 },
             )
             headers = {"Content-Type": "application/json"}
@@ -763,7 +765,7 @@ class JunebugBackendTest(BaseCasesTest):
                 'outbound_created_on': '2016-11-17T10:30:00+00:00',
                 'label': '', 'reply_to': 'Hello', 'to': '+1234', 'user_id': 'C-002',
                 'helpdesk_operator_id': self.user1.id,
-                'inbound_channel_id': ''})
+                'inbound_channel_id': '', "message_id": out_msg.id})
             headers = {'Content-Type': "application/json"}
             resp = {
                 "to": [
