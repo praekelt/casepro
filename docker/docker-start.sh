@@ -4,6 +4,9 @@ set -e
 
 ./manage.py migrate --noinput
 
+# Create the Gunicorn runtime directory at runtime in case /run is a tmpfs
+mkdir /run/gunicorn
+
 echo "=> Starting nginx"
 nginx; service nginx reload
 
